@@ -37,7 +37,7 @@
               {{ t.pnr || t.booking_no || '-' }}
             </td>
 
-            <!-- 2. Tanggal Terbang (maskapai + jam + transit + route) -->
+            <!-- 2. Tanggal Terbang (tanggal + maskapai + jam + rute + transit jika ada) -->
             <td class="flight-info">
               <div class="line-main">
                 <span class="date">
@@ -48,9 +48,7 @@
                 </span>
               </div>
               <div class="line-sub">
-                <span v-if="depTime(t)">
-                  {{ depTime(t) }}
-                </span>
+                <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span v-if="t.origin && t.destination">
                   &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
                 </span>
@@ -84,7 +82,7 @@
     </div>
 
     <!-- MOBILE CARD VIEW (4 ITEM UTAMA) -->
-    <div class="mobile-list mobile-only">
+    <div class="mobile-list">
       <div v-if="!loading && tickets.length === 0" class="empty">
         Belum ada data tiket.
       </div>
@@ -152,8 +150,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
-// Ganti ke URL Worker-mu:
-const API_URL = 'https://tripcom-worker.YOUR_SUBDOMAIN.workers.dev/api/tickets';
+// Ganti dengan URL Worker kamu:
+const API_URL = 'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
 
 const tickets = ref([]);
 const loading = ref(false);
@@ -164,7 +162,7 @@ const fetchTickets = async () => {
   error.value = '';
   try {
     const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('Failed to fetch');
+    if (!res.ok) throw new Error('Gagal mengambil data tiket');
     const data = await res.json();
     tickets.value = Array.isArray(data) ? data : [];
   } catch (e) {
@@ -201,6 +199,7 @@ onMounted(fetchTickets);
   box-shadow: 0 14px 40px rgba(15, 23, 42, 0.8);
   color: #e5e7eb;
 }
+
 .card-head {
   display: flex;
   justify-content: space-between;
@@ -209,26 +208,31 @@ onMounted(fetchTickets);
   margin-bottom: 8px;
   flex-wrap: wrap;
 }
+
 .title {
   font-size: 14px;
   font-weight: 600;
 }
+
 .subtitle {
   font-size: 10px;
   color: #9ca3af;
 }
+
 .actions {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 10px;
 }
+
 .count {
   padding: 2px 8px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid #4b5563;
 }
+
 .actions button {
   padding: 4px 10px;
   font-size: 10px;
@@ -238,21 +242,25 @@ onMounted(fetchTickets);
   background: #22c55e;
   color: #020817;
 }
+
 .table-wrap {
   max-height: 70vh;
   overflow-y: auto;
 }
+
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 10px;
 }
+
 th,
 td {
   padding: 6px 6px;
   border-bottom: 1px solid rgba(55, 65, 81, 0.7);
   text-align: left;
 }
+
 th {
   position: sticky;
   top: 0;
@@ -263,33 +271,42 @@ th {
   font-size: 9px;
   letter-spacing: 0.06em;
 }
+
 .pnr {
   font-weight: 600;
 }
+
 .flight-info .line-main {
   font-size: 10px;
 }
+
 .flight-info .date {
   font-weight: 500;
 }
+
 .flight-info .airline {
   color: #9ca3af;
 }
+
 .flight-info .line-sub {
   font-size: 9px;
   color: #9ca3af;
 }
+
 .price {
   font-weight: 600;
 }
+
 .link {
   color: #38bdf8;
   font-size: 9px;
   text-decoration: none;
 }
+
 .link:hover {
   text-decoration: underline;
 }
+
 .empty {
   text-align: center;
   padding: 10px 4px;
@@ -301,6 +318,7 @@ th {
 .mobile-list {
   display: none;
 }
+
 .ticket-card {
   padding: 9px 9px 8px;
   margin-bottom: 8px;
@@ -311,27 +329,33 @@ th {
   flex-direction: column;
   gap: 4px;
 }
+
 .row {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
+
 .label {
   font-size: 8px;
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
 .value {
   font-size: 10px;
 }
+
 .value.strong {
   font-weight: 600;
 }
+
 .sub {
   font-size: 9px;
   color: #9ca3af;
 }
+
 .error {
   margin-top: 6px;
   font-size: 10px;
@@ -349,12 +373,10 @@ th {
     overflow-y: auto;
   }
 }
+
 @media (min-width: 768px) {
   .desktop-only {
     display: block;
-  }
-  .mobile-only {
-    display: none;
   }
 }
 </style>
