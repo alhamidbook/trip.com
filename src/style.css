@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+* {
+  box-sizing: border-box;
+}
+a {
+  color: inherit;
+}
