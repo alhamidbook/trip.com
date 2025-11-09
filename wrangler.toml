@@ -1,8 +1,4 @@
-name = "tripcom-worker"          # sesuaikan dengan nama Worker kamu
-main = "src/worker.js"           # file entry Worker
+name = "trip-com-frontend"
 compatibility_date = "2024-09-01"
+pages_build_output_dir = "dist"
 
-[[d1_databases]]
-binding = "DB"                   # ini yg dipakai di kode: env.DB
-database_name = "tripcom_tickets_db"
-database_id = "<uuid-d1-tripcom>"  # ganti dengan D1 ID asli
