@@ -5,7 +5,7 @@
         <div class="title">Tiket Issued Trip.com</div>
         <div class="subtitle">
           Data otomatis dari email
-          <strong>"Konfirmasi Pemesanan Tiket Pesawat"</strong>
+          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
           (Trip.com).
         </div>
       </div>
@@ -23,8 +23,8 @@
       <table>
         <thead>
           <tr>
-            <th>Nomor Pemesanan</th>
-            <th>Tanggal & Rute</th>
+            <th>Nomor Pemesanan / PNR</th>
+            <th>Penumpang &amp; Rute</th>
             <th>Download PDF Ticket</th>
             <th>Total Harga</th>
           </tr>
@@ -34,15 +34,18 @@
             <td colspan="4" class="empty">Belum ada data tiket.</td>
           </tr>
 
-          <tr v-for="t in tickets" :key="t.id">
-            <!-- PNR -->
+          <tr v-for="t in tickets" :key="t.id || t.pnr">
+            <!-- PNR / Booking No -->
             <td class="pnr">
               {{ t.pnr || t.booking_no || '-' }}
             </td>
 
-            <!-- Flight info -->
+            <!-- Passenger + Flight info -->
             <td class="flight-info">
               <div class="line-main">
+                <span v-if="t.passenger" class="passenger">
+                  {{ t.passenger }}
+                </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
@@ -61,8 +64,8 @@
             <!-- PDF -->
             <td>
               <a
-                v-if="t.pdf_url"
-                :href="t.pdf_url"
+                v-if="pdfUrl(t)"
+                :href="pdfUrl(t)"
                 target="_blank"
                 rel="noopener"
                 class="link"
@@ -72,7 +75,7 @@
               <span v-else>-</span>
             </td>
 
-            <!-- Harga -->
+            <!-- Harga (belum ada dari Trip.com → default "-") -->
             <td class="price">
               {{ formatPrice(t.price || t.total_price) }}
             </td>
@@ -89,13 +92,20 @@
 
       <div
         v-for="t in tickets"
-        :key="t.id"
+        :key="t.id || t.pnr"
         class="ticket-card"
       >
         <div class="row">
-          <div class="label">Nomor Pemesanan</div>
+          <div class="label">Nomor Pemesanan / PNR</div>
           <div class="value strong">
             {{ t.pnr || t.booking_no || '-' }}
+          </div>
+        </div>
+
+        <div class="row" v-if="t.passenger">
+          <div class="label">Penumpang</div>
+          <div class="value">
+            {{ t.passenger }}
           </div>
         </div>
 
@@ -119,8 +129,8 @@
           <div class="label">PDF Ticket</div>
           <div class="value">
             <a
-              v-if="t.pdf_url"
-              :href="t.pdf_url"
+              v-if="pdfUrl(t)"
+              :href="pdfUrl(t)"
               target="_blank"
               rel="noopener"
               class="link"
@@ -170,9 +180,21 @@ const fetchTickets = async () => {
   }
 };
 
+// Helpers sesuai struktur DB Worker
 const depDate = (t) => t.date || t.departure_date || t.flight_date || '';
 const depTime = (t) => t.time || t.departure_time || '';
 const airline = (t) => t.operator || t.airline || '';
+
+const pdfUrl = (t) => {
+  if (t.pdf_url) return t.pdf_url;
+  if (t.pnr) {
+    // fallback: Worker /pdf/:pnr
+    return `https://tripcom-worker.alhamidbook.workers.dev/pdf/${encodeURIComponent(
+      t.pnr
+    )}`;
+  }
+  return '';
+};
 
 const formatPrice = (price) => {
   if (price == null || price === '') return '-';
@@ -276,6 +298,15 @@ th {
 
 .flight-info .line-main {
   font-size: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.flight-info .passenger {
+  font-weight: 600;
+  margin-right: 4px;
 }
 
 .flight-info .date {
