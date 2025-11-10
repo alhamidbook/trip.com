@@ -1,100 +1,133 @@
-// /functions/api/upload-itinerary.js
-// Tujuan:
-// - Dipanggil dari Google Apps Script
-// - Mengupload Itinerary.pdf ke repo private alhamidbook/server/pdf/
-// - Menggunakan PAT dari env: GITHUB_PAT
-// - Proteksi dengan X-API-KEY (UPLOAD_API_KEY)
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
 
-const OWNER = 'alhamidbook';
-const REPO = 'server';
-const PDF_DIR = 'pdf'; // folder di repo private: /pdf/
-const BRANCH = 'main';
-
-export default async function handler(req, res) {
-  try {
-    if (req.method !== 'POST') {
-      res.status(405).json({ success: false, message: 'Method not allowed' });
-      return;
-    }
-
-    const apiKey = req.headers['x-api-key'] || req.headers['X-API-KEY'];
-    if (!process.env.UPLOAD_API_KEY || apiKey !== process.env.UPLOAD_API_KEY) {
-      res.status(401).json({ success: false, message: 'Unauthorized' });
-      return;
-    }
-
-    const { pnr, fileBase64 } = req.body || {};
-
-    if (!pnr || !fileBase64) {
-      res.status(400).json({
-        success: false,
-        message: 'pnr dan fileBase64 wajib diisi.'
+    // CORS & method
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST,OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type,X-API-KEY'
+        }
       });
-      return;
     }
 
-    if (!process.env.GITHUB_PAT) {
-      res.status(500).json({
-        success: false,
-        message: 'GITHUB_PAT belum diset di environment.'
-      });
-      return;
+    if (url.pathname !== '/api/upload-itinerary' || request.method !== 'POST') {
+      return new Response('Not found', { status: 404 });
     }
 
-    // Normalisasi PNR: uppercase, alfanumerik saja
-    const safePnr = String(pnr).toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const ts = new Date()
-      .toISOString()
-      .replace(/[-:TZ.]/g, '')
-      .slice(0, 14); // YYYYMMDDHHMMSS
+    // Auth sederhana pakai X-API-KEY
+    const apiKey =
+      request.headers.get('X-API-KEY') ||
+      request.headers.get('x-api-key');
 
-    const targetFileName = `${safePnr}-${ts}.pdf`;
-    const targetPath = `${PDF_DIR}/${targetFileName}`;
+    if (!env.UPLOAD_API_KEY || apiKey !== env.UPLOAD_API_KEY) {
+      return json({ success: false, message: 'Unauthorized' }, 401);
+    }
 
-    const ghRes = await fetch(
-      `https://api.github.com/repos/${OWNER}/${REPO}/contents/${encodeURIComponent(
-        targetPath
+    const body = await request.json().catch(() => null);
+    if (!body || !body.pnr || !body.fileBase64) {
+      return json(
+        { success: false, message: 'pnr dan fileBase64 wajib dikirim.' },
+        400
+      );
+    }
+
+    const pnr = String(body.pnr).trim().toUpperCase();
+    const fileBase64 = String(body.fileBase64).trim();
+
+    if (!/^[A-Z0-9]{5,6}$/.test(pnr)) {
+      return json(
+        { success: false, message: 'Format PNR tidak valid.' },
+        400
+      );
+    }
+
+    if (!env.GITHUB_PAT) {
+      return json(
+        { success: false, message: 'GITHUB_PAT belum dikonfigurasi di Cloudflare.' },
+        500
+      );
+    }
+
+    const GITHUB_OWNER = 'alhamidbook';
+    const GITHUB_REPO = 'server';
+    const GITHUB_BRANCH = 'main';
+    const path = `pdf/${pnr}.pdf`;
+
+    const apiBase = 'https://api.github.com';
+    const headers = {
+      'Authorization': `token ${env.GITHUB_PAT}`,
+      'User-Agent': 'upload-itinerary-worker',
+      'Accept': 'application/vnd.github+json'
+    };
+
+    // Cek apakah file sudah ada → ambil sha kalau mau update
+    let sha = null;
+    const getRes = await fetch(
+      `${apiBase}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(
+        path
+      )}?ref=${GITHUB_BRANCH}`,
+      { headers }
+    );
+
+    if (getRes.status === 200) {
+      const existing = await getRes.json();
+      sha = existing.sha;
+    } else if (getRes.status !== 404 && getRes.status !== 200) {
+      const txt = await getRes.text();
+      console.log('GitHub check error:', getRes.status, txt);
+    }
+
+    // Buat atau update file
+    const putBody = {
+      message: `Add/update itinerary for PNR ${pnr}`,
+      content: fileBase64,
+      branch: GITHUB_BRANCH
+    };
+    if (sha) putBody.sha = sha;
+
+    const putRes = await fetch(
+      `${apiBase}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${encodeURIComponent(
+        path
       )}`,
       {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${process.env.GITHUB_PAT}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/vnd.github+json'
+          ...headers,
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          message: `Upload itinerary for PNR ${safePnr}`,
-          content: fileBase64,
-          branch: BRANCH
-        })
+        body: JSON.stringify(putBody)
       }
     );
 
-    if (!ghRes.ok) {
-      const errorText = await ghRes.text();
-      res.status(ghRes.status).json({
-        success: false,
-        message: 'Gagal upload ke GitHub',
-        detail: errorText
-      });
-      return;
+    if (putRes.status < 200 || putRes.status >= 300) {
+      const txt = await putRes.text();
+      console.log('GitHub upload error:', putRes.status, txt);
+      return json(
+        { success: false, message: 'Gagal upload PDF ke GitHub.' },
+        502
+      );
     }
 
-    const data = await ghRes.json();
-    const downloadUrl =
-      data?.content?.download_url || data?.content?.html_url || null;
+    // pdf_url menggunakan endpoint Worker /pdf/:pnr
+    const pdfUrl = `https://tripcom-worker.alhamidbook.workers.dev/pdf/${pnr}`;
 
-    res.status(200).json({
+    return json({
       success: true,
-      file: targetFileName,
-      pdf_url: downloadUrl
-    });
-  } catch (err) {
-    console.error('upload-itinerary error', err);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      detail: String(err)
+      pnr,
+      pdf_url: pdfUrl
     });
   }
+};
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
+  });
 }
