@@ -275,8 +275,6 @@ const formatPrice = (price) => {
   });
 };
 
-/* PNR DISPLAY HELPERS */
-
 const extractRealPnr = (t) => {
   if (t.real_pnr) return String(t.real_pnr).trim();
   const extra = t.extra ? String(t.extra) : '';
@@ -290,7 +288,7 @@ const extractBookingNo = (t) => {
 
   const extra = t.extra ? String(t.extra) : '';
   const m = extra.match(/NoPemesanan=(\d+)/i);
-  return m ? m[1] : (t.booking_no || '');
+  return m ? m[1] : '';
 };
 
 const displayPnr = (t) => {
@@ -306,13 +304,12 @@ const displayPnr = (t) => {
   }
 
   return booking || finalPnr || dbPnr || '-';
-};
+};  
 
 onMounted(() => fetchTickets(1));
 </script>
 
 <style scoped>
-/* CSS sama seperti sebelumnya, tidak diubah */
 .ticket-table {
   display: flex;
   flex-direction: column;
