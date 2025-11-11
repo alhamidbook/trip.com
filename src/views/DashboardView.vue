@@ -3,7 +3,12 @@
     <header class="topbar">
       <div>
         <h1>Daftar Tiket Issued Trip.com</h1>
-        <p>Data otomatis dari email "Konfirmasi Pemesanan Tiket Pesawat".</p>
+        <p>
+          Data otomatis dari email
+          <strong>"Fwd: Pembayaran Berhasil"</strong>
+          &amp;
+          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
+        </p>
       </div>
       <div class="right">
         <span class="user" v-if="authUser">
@@ -36,52 +41,89 @@ const logout = () => {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #020817;
-  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(
+      circle at top left,
+      #e0f2fe 0%,
+      #eff6ff 40%,
+      #dbeafe 100%
+    );
+  color: #0f172a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
+/* TOPBAR */
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 10;
-  padding: 14px 18px;
+  z-index: 20;
+  padding: 14px 22px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   backdrop-filter: blur(14px);
-  background: rgba(2, 8, 23, 0.96);
-  border-bottom: 1px solid rgba(75, 85, 99, 0.5);
+  background: rgba(239, 246, 255, 0.9);
+  border-bottom: 1px solid #dbeafe;
+  box-shadow: 0 6px 14px rgba(148, 163, 253, 0.18);
 }
-h1 {
+
+.topbar h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
 }
-p {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: #9ca3af;
+
+.topbar p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: #6b7280;
 }
+
+.topbar p strong {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Right section */
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
+
 .user {
   font-size: 11px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid #4b5563;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-weight: 500;
 }
+
 button {
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-size: 11px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
   background: #ef4444;
-  color: #f9fafb;
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
+  transition: all 0.15s ease;
 }
+
+button:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* CONTENT */
 .content {
-  padding: 14px 18px 20px;
+  padding: 18px 22px 24px;
 }
 </style>
