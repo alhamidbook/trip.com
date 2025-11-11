@@ -43,12 +43,14 @@ const logout = () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(
-      circle at top left,
-      #e0f2fe 0%,
-      #eff6ff 40%,
-      #dbeafe 100%
-    );
+  /* Sama style gradient dengan login supaya konsisten */
+  background: linear-gradient(
+    135deg,
+    #0052ff 0%,
+    #1da0ff 35%,
+    #4fd5ff 65%,
+    #ff6ad5 100%
+  );
   color: #0f172a;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -64,9 +66,9 @@ const logout = () => {
   align-items: center;
   gap: 16px;
   backdrop-filter: blur(14px);
-  background: rgba(239, 246, 255, 0.9);
-  border-bottom: 1px solid #dbeafe;
-  box-shadow: 0 6px 14px rgba(148, 163, 253, 0.18);
+  background: rgba(239, 246, 255, 0.96);
+  border-bottom: 1px solid #bfdbfe;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
 }
 
 .topbar h1 {
