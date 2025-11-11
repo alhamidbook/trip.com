@@ -201,15 +201,37 @@ const fetchTickets = async () => {
   }
 };
 
-// Sanitizer penumpang: hilangkan noise seperti
-// "Kami akan segera menerbitkan tiket Anda"
+/**
+ * Bersihkan field passenger dari kalimat-kalimat info yang bukan nama.
+ * Termasuk:
+ * - "Kami akan segera menerbitkan tiket Anda"
+ * - "Tiket akan diterbitkan dalam waktu ..."
+ * - baris yang hanya "icon" dsb.
+ */
 const safePassenger = (t) => {
-  const raw = t.passenger || '';
+  let raw = t.passenger || '';
   if (!raw) return '';
-  const cleaned = raw
-    .replace(/kami akan segera menerbitkan tiket anda/ig, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+
+  // Normalisasi whitespace
+  raw = String(raw).replace(/\r\n/g, '\n');
+
+  // Buang baris-baris yang mengandung frasa non-nama
+  const noisePatterns = [
+    /kami akan segera menerbitkan tiket anda/i,
+    /tiket akan diterbitkan dalam waktu/i,
+    /kami akan segera menerbitkan tiket/i,
+    /^icon\s*$/i
+  ];
+
+  const filteredLines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false;
+      return !noisePatterns.some((re) => re.test(line));
+    });
+
+  const cleaned = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
   return cleaned || '';
 };
 
