@@ -1,11 +1,19 @@
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, -apple-system, sans-serif;
-  background: radial-gradient(circle at top left, #e0f2fe 0%, #eff6ff 40%, #dbeafe 100%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Gradient lembut: biru → cyan → sedikit pink di bawah */
+  background: linear-gradient(
+    135deg,
+    #0052ff 0%,
+    #1da0ff 35%,
+    #4fd5ff 65%,
+    #ff6ad5 100%
+  );
+  min-height: 100vh;
   color: #0f172a;
 }
 
-/* Biar konsisten */
+/* Konsisten untuk seluruh app */
 * {
   box-sizing: border-box;
 }
