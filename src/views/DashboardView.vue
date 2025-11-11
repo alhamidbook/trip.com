@@ -5,40 +5,90 @@
       <div class="card-head">
         <div>
           <div class="title">Tiket Issued Trip.com</div>
-          <div class="subtitle">
-            Data otomatis dari email Trip.com:
-            <strong>"Fwd: Pembayaran Berhasil"</strong>
-            &
-            <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
+          <div class="total-label">
+            Total: {{ total }}
+            <span v-if="isFilterMode" class="badge-filter">
+              (filter aktif)
+            </span>
           </div>
         </div>
 
         <div class="actions">
-          <span class="count">Total: {{ total }}</span>
-
-          <button @click="refresh" :disabled="loading">
-            {{ loading ? 'Refresh...' : 'Refresh' }}
+          <!-- 1. Cari Nama -->
+          <button
+            type="button"
+            class="btn"
+            @click="openSearch"
+            :disabled="loading"
+          >
+            Cari Nama
           </button>
 
+          <!-- 2. Pilih Rentang Tanggal -->
           <button
-            class="range-btn"
             type="button"
+            class="btn outline"
             @click="openRangeModal"
             :disabled="loading"
           >
             Pilih Rentang Tanggal
           </button>
+
+          <!-- 3. Refresh -->
+          <button
+            type="button"
+            class="btn"
+            @click="refresh"
+            :disabled="loading"
+          >
+            {{ loading ? 'Refresh...' : 'Refresh' }}
+          </button>
+
+          <!-- 4. Logout -->
+          <button
+            type="button"
+            class="btn danger"
+            @click="logout"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
-      <!-- DESKTOP TABLE: scroll internal -->
+      <!-- SEARCH BAR (muncul setelah klik "Cari Nama") -->
+      <div v-if="showSearch" class="search-bar">
+        <input
+          v-model="searchName"
+          type="text"
+          class="search-input"
+          placeholder="Input nama"
+        />
+        <button
+          class="btn small"
+          type="button"
+          @click="applySearch"
+          :disabled="loading || !searchName.trim()"
+        >
+          Ok
+        </button>
+        <button
+          class="btn small outline"
+          type="button"
+          @click="cancelSearch"
+          :disabled="loading"
+        >
+          Batal
+        </button>
+      </div>
+
+      <!-- DESKTOP TABLE -->
       <div class="table-wrap desktop-only">
         <table>
           <thead>
             <tr>
               <th>Pilih</th>
               <th>Nomor Pemesanan / PNR</th>
-              <th>Penumpang & Rute</th>
+              <th>Penumpang &amp; Rute</th>
               <th>Download PDF Ticket</th>
               <th>Total Harga</th>
             </tr>
@@ -48,10 +98,7 @@
               <td colspan="5" class="empty">Belum ada data tiket.</td>
             </tr>
 
-            <tr
-              v-for="t in tickets"
-              :key="ticketKey(t)"
-            >
+            <tr v-for="t in tickets" :key="ticketKey(t)">
               <td class="select">
                 <input
                   type="checkbox"
@@ -59,11 +106,9 @@
                   v-model="selectedKeys"
                 />
               </td>
-
               <td class="pnr">
                 {{ t.pnr || t.booking_no || '-' }}
               </td>
-
               <td class="flight-info">
                 <div class="line-main">
                   <span
@@ -89,7 +134,6 @@
                   </span>
                 </div>
               </td>
-
               <td>
                 <a
                   v-if="t.pdf_url"
@@ -102,7 +146,6 @@
                 </a>
                 <span v-else class="pending">Akan segera terbit</span>
               </td>
-
               <td class="price">
                 {{ formatPrice(t.price || t.total_price) }}
               </td>
@@ -111,12 +154,9 @@
         </table>
       </div>
 
-      <!-- MOBILE LIST: scroll internal -->
+      <!-- MOBILE LIST -->
       <div class="mobile-list">
-        <div
-          v-if="!loading && tickets.length === 0"
-          class="empty"
-        >
+        <div v-if="!loading && tickets.length === 0" class="empty">
           Belum ada data tiket.
         </div>
 
@@ -143,10 +183,7 @@
             </div>
           </div>
 
-          <div
-            class="row"
-            v-if="safePassenger(t)"
-          >
+          <div class="row" v-if="safePassenger(t)">
             <div class="label">Penumpang</div>
             <div class="value">
               {{ safePassenger(t) }}
@@ -194,9 +231,9 @@
         </div>
       </div>
 
-      <!-- PAGINATION: hanya mode normal -->
+      <!-- PAGINATION: hanya mode normal (tanpa filter) -->
       <div
-        v-if="!isRangeMode && totalPages > 1"
+        v-if="!isFilterMode && totalPages > 1"
         class="pagination"
       >
         <button
@@ -219,26 +256,17 @@
       </div>
 
       <!-- TOTAL TERPILIH -->
-      <div
-        v-if="selectedKeys.length"
-        class="selected-total"
-      >
+      <div v-if="selectedKeys.length" class="selected-total">
         Total harga tiket terpilih:
         <strong>{{ formatPrice(selectedTotal) }}</strong>
       </div>
 
-      <p
-        v-if="error"
-        class="error"
-      >
+      <p v-if="error" class="error">
         {{ error }}
       </p>
 
       <!-- MODAL RENTANG TANGGAL -->
-      <div
-        v-if="showModal"
-        class="modal-backdrop"
-      >
+      <div v-if="showModal" class="modal-backdrop">
         <div class="modal">
           <h3>Pilih Rentang Tanggal</h3>
 
@@ -272,7 +300,8 @@
           </div>
 
           <p class="hint">
-            Kosongkan salah satu jika hanya ingin filter dari/hingga tanggal tertentu.
+            Kosongkan salah satu jika hanya ingin filter dari / hingga tanggal
+            tertentu.
           </p>
         </div>
       </div>
@@ -282,9 +311,15 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { clearAuth, getAuth } from '../stores/auth';
 
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
+
+const router = useRouter();
+const auth = getAuth();
+const authUser = auth ? auth.user : null;
 
 const tickets = ref([]);
 const loading = ref(false);
@@ -295,13 +330,26 @@ const currentPage = ref(1);
 const totalPages = ref(1);
 const pageSize = 10;
 
-const isRangeMode = ref(false);
+// Filter modes
+const isFilterMode = ref(false); // true jika cari nama atau rentang tanggal aktif
 
+// Range modal
 const showModal = ref(false);
 const startDate = ref('');
 const endDate = ref('');
 
+// Search nama
+const showSearch = ref(false);
+const searchName = ref('');
+
+// Checkbox total
 const selectedKeys = ref([]);
+
+/* AUTH */
+const logout = () => {
+  clearAuth();
+  router.push({ name: 'Login' });
+};
 
 /* Helpers */
 
@@ -328,12 +376,12 @@ const selectedTotal = computed(() => {
   }, 0);
 });
 
-/* Fetch normal (paged) */
+/* FETCH: MODE NORMAL (PAGINATED) */
 
 const fetchPage = async (page = 1) => {
   loading.value = true;
   error.value = '';
-  isRangeMode.value = false;
+  isFilterMode.value = false;
   selectedKeys.value = [];
 
   try {
@@ -346,7 +394,6 @@ const fetchPage = async (page = 1) => {
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
 
     const data = await res.json();
-
     const items = Array.isArray(data.items)
       ? data.items
       : Array.isArray(data)
@@ -369,7 +416,7 @@ const fetchPage = async (page = 1) => {
   }
 };
 
-/* Fetch by date range */
+/* FETCH: RANGE */
 
 const fetchRangeTickets = async () => {
   loading.value = true;
@@ -390,7 +437,6 @@ const fetchRangeTickets = async () => {
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
 
     const data = await res.json();
-
     const items = Array.isArray(data.items)
       ? data.items
       : Array.isArray(data)
@@ -402,6 +448,7 @@ const fetchRangeTickets = async () => {
       typeof data.total === 'number' ? data.total : items.length;
     currentPage.value = 1;
     totalPages.value = 1;
+    isFilterMode.value = true;
   } catch (e) {
     error.value = e.message || 'Failed to fetch';
   } finally {
@@ -409,27 +456,65 @@ const fetchRangeTickets = async () => {
   }
 };
 
-/* Actions */
+/* FETCH: SEARCH NAMA */
 
+const fetchByName = async (name) => {
+  loading.value = true;
+  error.value = '';
+  selectedKeys.value = [];
+
+  try {
+    const params = new URLSearchParams();
+    params.append('name', name);
+
+    const res = await fetch(`${API_URL}?${params.toString()}`);
+    if (!res.ok) throw new Error('Gagal mengambil data tiket');
+
+    const data = await res.json();
+    const items = Array.isArray(data.items)
+      ? data.items
+      : Array.isArray(data)
+      ? data
+      : [];
+
+    tickets.value = items;
+    total.value =
+      typeof data.total === 'number' ? data.total : items.length;
+    currentPage.value = 1;
+    totalPages.value = 1;
+    isFilterMode.value = true;
+  } catch (e) {
+    error.value = e.message || 'Failed to fetch';
+  } finally {
+    loading.value = false;
+  }
+};
+
+/* ACTIONS */
+
+// Refresh ke mode normal halaman 1
 const refresh = () => {
   startDate.value = '';
   endDate.value = '';
-  isRangeMode.value = false;
+  searchName.value = '';
+  showSearch.value = false;
+  isFilterMode.value = false;
   fetchPage(1);
 };
 
 const nextPage = () => {
-  if (!isRangeMode.value && currentPage.value < totalPages.value) {
+  if (!isFilterMode.value && currentPage.value < totalPages.value && !loading.value) {
     fetchPage(currentPage.value + 1);
   }
 };
 
 const prevPage = () => {
-  if (!isRangeMode.value && currentPage.value > 1) {
+  if (!isFilterMode.value && currentPage.value > 1 && !loading.value) {
     fetchPage(currentPage.value - 1);
   }
 };
 
+// Range modal
 const openRangeModal = () => {
   showModal.value = true;
 };
@@ -440,8 +525,24 @@ const closeRangeModal = () => {
 
 const applyRange = async () => {
   showModal.value = false;
-  isRangeMode.value = true;
   await fetchRangeTickets();
+};
+
+// Search nama
+const openSearch = () => {
+  showSearch.value = true;
+};
+
+const cancelSearch = () => {
+  showSearch.value = false;
+  searchName.value = '';
+};
+
+const applySearch = async () => {
+  const name = searchName.value.trim();
+  if (!name) return;
+  showSearch.value = false;
+  await fetchByName(name);
 };
 
 /* Passenger cleaning */
@@ -492,9 +593,8 @@ const airline = (t) =>
   t.operator || t.airline || '';
 
 const formatPrice = (price) => {
-  if (price == null || price === '') return '-';
   const n = parsePriceNumber(price);
-  if (isNaN(n) || n <= 0) return '-';
+  if (!n) return '-';
   return n.toLocaleString('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -524,7 +624,6 @@ onMounted(() => {
   align-items: stretch;
 }
 
-/* Card utama */
 .card {
   width: 100%;
   max-width: 1320px;
@@ -538,7 +637,7 @@ onMounted(() => {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -557,15 +656,19 @@ onMounted(() => {
   color: #0f172a;
 }
 
-.subtitle {
-  font-size: 13px;
-  color: #6b7280;
+.total-label {
   margin-top: 2px;
+  font-size: 13px;
+  color: #111827;
 }
 
-.subtitle strong {
-  color: #2563eb;
-  font-weight: 600;
+.badge-filter {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
 }
 
 /* Actions */
@@ -576,50 +679,76 @@ onMounted(() => {
   font-size: 12px;
 }
 
-.count {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-weight: 500;
-}
-
-.actions button {
+.btn {
   padding: 6px 12px;
   font-size: 11px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
+  background: #3b82f6;
+  color: #ffffff;
   font-weight: 500;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
   transition: all 0.15s ease;
 }
 
-.actions button:disabled {
+.btn.small {
+  padding: 4px 10px;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.btn.outline {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  box-shadow: none;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: #f9fafb;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #2563eb;
+}
+
+.btn.outline:hover:not(:disabled) {
+  background: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
   opacity: 0.6;
   cursor: default;
   box-shadow: none;
 }
 
-.actions button:not(.range-btn) {
-  background: #3b82f6;
-  color: #ffffff;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+/* Search bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  margin-bottom: 2px;
+  font-size: 11px;
 }
 
-.actions button:not(.range-btn):hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-}
-
-.range-btn {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
-}
-
-.range-btn:hover:not(:disabled) {
-  background: #dbeafe;
+.search-input {
+  flex: 0 0 180px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  font-size: 11px;
+  outline: none;
 }
 
 /* Table wrap */
@@ -922,6 +1051,11 @@ th {
 
   .pagination {
     justify-content: center;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 }
 
