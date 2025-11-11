@@ -68,7 +68,7 @@
               </div>
             </td>
 
-            <!-- PDF (hanya jika sudah ada dari email Konfirmasi) -->
+            <!-- PDF -->
             <td>
               <a
                 v-if="t.pdf_url"
@@ -197,37 +197,40 @@ const fetchTickets = async () => {
   }
 };
 
-/**
- * Sanitizer nama penumpang:
- * - hapus frasa marketing seperti:
- *   "Kami akan segera menerbitkan tiket Anda"
- *   "Tiket akan diterbitkan dalam waktu ..."
- *   "icon"
- * - rapikan whitespace
- */
+// Bersihkan field passenger supaya tidak tampil "Kami akan..." dsb
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
   raw = String(raw);
 
-  // Hapus frasa noise di mana pun muncul
+  // Jika masih mengandung pola (Nama depan)/(Nama belakang),
+  // ekstrak nama pertama saja.
+  const paxMatch = raw.match(
+    /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
+  );
+  if (paxMatch) {
+    const first = paxMatch[1].trim().replace(/\s+/g, ' ');
+    const last = paxMatch[2].trim().replace(/\s+/g, ' ');
+    return `${first} ${last}`.trim();
+  }
+
+  // Hapus frasa marketing & info status
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
-    .replace(/^icon.*$/gim, '');
+    .replace(/^icon\b.*$/gim, '');
 
-  // Pecah per baris, buang yang kosong / masih mengandung noise
-  const noise = [
-    /Kami akan segera menerbitkan tiket Anda/i,
-    /Tiket akan diterbitkan dalam waktu/i,
-    /^icon$/i
-  ];
+  // Hapus baris rute yang nyelip di passenger
+  raw = raw.replace(
+    /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
+    ''
+  );
 
   const cleaned = raw
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l && !noise.some((re) => re.test(l)))
+    .filter((l) => l.length > 0)
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
