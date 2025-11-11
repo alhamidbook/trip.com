@@ -331,7 +331,7 @@ const totalPages = ref(1);
 const pageSize = 10;
 
 // Filter modes
-const isFilterMode = ref(false);
+const isFilterMode = ref(false); // true jika cari nama atau rentang tanggal aktif
 
 // Range modal
 const showModal = ref(false);
@@ -393,7 +393,7 @@ const extractBookingNo = (t) => {
 
   const extra = t.extra ? String(t.extra) : '';
   const m = extra.match(/NoPemesanan=(\d+)/i);
-  return m ? m[1] : '';
+  return m ? m[1] : (t.booking_no || '');
 };
 
 const displayPnr = (t) => {
@@ -527,6 +527,7 @@ const fetchByName = async (name) => {
 
 /* ACTIONS */
 
+// Refresh ke mode normal halaman 1
 const refresh = () => {
   startDate.value = '';
   endDate.value = '';
@@ -642,7 +643,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* (CSS sama persis seperti versi sebelumnya) */
+/* ... (CSS sama persis seperti sebelumnya, tidak diubah) ... */
 .page {
   height: 100vh;
   padding: 18px;
@@ -676,5 +677,417 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* ...seluruh CSS lain tidak berubah... (biarkan seperti di kode asli) */
+/* (seluruh CSS lanjutan tetap sama persis seperti kode awal) */
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.total-label {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.badge-filter {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.btn.outline {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  box-shadow: none;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: #f9fafb;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #2563eb;
+}
+
+.btn.outline:hover:not(:disabled) {
+  background: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  margin-bottom: 2px;
+  font-size: 11px;
+}
+
+.search-input {
+  flex: 0 0 180px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  font-size: 11px;
+  outline: none;
+}
+
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #eff6ff;
+  z-index: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #1f2937;
+}
+
+.select {
+  width: 40px;
+}
+
+.pnr {
+  font-weight: 600;
+  color: #111827;
+}
+
+.flight-info .line-main {
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.flight-info .passenger {
+  font-weight: 600;
+  margin-right: 4px;
+  color: #111827;
+}
+
+.flight-info .date {
+  font-weight: 500;
+  color: #111827;
+}
+
+.flight-info .airline {
+  color: #6b7280;
+}
+
+.flight-info .line-sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.price {
+  font-weight: 600;
+  color: #111827;
+}
+
+.link {
+  color: #2563eb;
+  font-size: 11px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.pending {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.empty {
+  text-align: center;
+  padding: 12px 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.mobile-list {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ticket-card {
+  padding: 10px 10px 8px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 16px rgba(148, 163, 253, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.select-row {
+  align-items: flex-start;
+}
+
+.label {
+  font-size: 9px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.value {
+  font-size: 12px;
+  color: #111827;
+}
+
+.value.strong {
+  font-weight: 600;
+}
+
+.sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.pagination {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.nav-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-info {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.selected-total {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #111827;
+}
+
+.error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: #ffffff;
+  padding: 16px 16px 12px;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: #111827;
+}
+
+.modal h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  color: #4b5563;
+}
+
+.modal input[type='date'] {
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.modal-submit {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.modal-cancel {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.hint {
+  margin: 2px 0 0;
+  font-size: 9px;
+  color: #9ca3af;
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 12px 10px 8px;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-list {
+    display: block;
+  }
+
+  .pagination {
+    justify-content: center;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block;
+  }
+}
 </style>
