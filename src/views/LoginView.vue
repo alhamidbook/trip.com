@@ -88,21 +88,23 @@ const handleLogin = async () => {
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: radial-gradient(
-      circle at top left,
-      #e0f2fe 0%,
-      #eff6ff 40%,
-      #dbeafe 100%
-    );
+  /* Gradient mirip banner Trip.com: biru -> cyan -> pink */
+  background: linear-gradient(
+    135deg,
+    #0052ff 0%,
+    #1da0ff 35%,
+    #4fd5ff 65%,
+    #ff6ad5 100%
+  );
 }
 
 .login-card {
   width: 100%;
   max-width: 420px;
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 26px 24px 24px;
-  box-shadow: 0 14px 40px rgba(148, 163, 253, 0.25);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
   color: #0f172a;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -147,7 +149,7 @@ input {
 
 input:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
   background: #ffffff;
 }
 
@@ -161,13 +163,13 @@ button {
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
   transition: all 0.15s ease;
 }
 
 button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 9px 22px rgba(37, 99, 235, 0.45);
 }
 
 button:disabled {
