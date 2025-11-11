@@ -1,26 +1,25 @@
 <template>
   <div class="page">
-    <header class="topbar">
-      <div>
-        <h1>Daftar Tiket Issued Trip.com</h1>
-        <p>
-          Data otomatis dari email
-          <strong>"Fwd: Pembayaran Berhasil"</strong>
-          &amp;
-          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
-        </p>
-      </div>
-      <div class="right">
-        <span class="user" v-if="authUser">
-          {{ authUser.name || authUser.username || 'User' }}
-        </span>
-        <button @click="logout">Logout</button>
-      </div>
-    </header>
+    <div class="wrapper">
+      <!-- Topbar jadi header card -->
+      <header class="topbar">
+        <div>
+          <h1>Daftar Tiket Issued Trip.com</h1>
+          <p>Data otomatis dari email "Fwd: Pembayaran Berhasil" &amp; "Fwd: Konfirmasi Pemesanan Tiket Pesawat:".</p>
+        </div>
+        <div class="right">
+          <span class="user" v-if="authUser">
+            {{ authUser.name || authUser.username || 'User' }}
+          </span>
+          <button @click="logout">Logout</button>
+        </div>
+      </header>
 
-    <main class="content">
-      <TicketTable />
-    </main>
+      <!-- Card utama: di dalamnya ada TicketTable; yang scroll hanya isi list -->
+      <main class="card">
+        <TicketTable />
+      </main>
+    </div>
   </div>
 </template>
 
@@ -30,7 +29,8 @@ import TicketTable from '../components/TicketTable.vue';
 import { clearAuth, getAuth } from '../stores/auth';
 
 const router = useRouter();
-const authUser = getAuth()?.user || null;
+const auth = getAuth();
+const authUser = auth ? auth.user : null;
 
 const logout = () => {
   clearAuth();
@@ -39,11 +39,14 @@ const logout = () => {
 </script>
 
 <style scoped>
+/* Halaman penuh, background gradient lembut */
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
   display: flex;
-  flex-direction: column;
-  /* Sama style gradient dengan login supaya konsisten */
+  justify-content: center;
+  align-items: stretch;
   background: linear-gradient(
     135deg,
     #0052ff 0%,
@@ -52,80 +55,95 @@ const logout = () => {
     #ff6ad5 100%
   );
   color: #0f172a;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* TOPBAR */
+/* Wrapper width maksimum */
+.wrapper {
+  width: 100%;
+  max-width: 1280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Topbar sekarang bagian dari card (bukan bar gelap terpisah) */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  padding: 14px 22px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  backdrop-filter: blur(14px);
-  background: rgba(239, 246, 255, 0.96);
-  border-bottom: 1px solid #bfdbfe;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  gap: 10px;
+  padding: 10px 14px 4px;
+  color: #0f172a;
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: #0f172a;
 }
 
 .topbar p {
-  margin: 3px 0 0;
-  font-size: 12px;
-  color: #6b7280;
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #4b5563;
 }
 
-.topbar p strong {
-  color: #2563eb;
-  font-weight: 600;
-}
-
-/* Right section */
 .right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .user {
   font-size: 11px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
-  font-weight: 500;
 }
 
 button {
-  padding: 7px 12px;
+  padding: 6px 10px;
   font-size: 11px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
   background: #ef4444;
-  color: #ffffff;
+  color: #f9fafb;
   font-weight: 500;
-  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
-  transition: all 0.15s ease;
 }
 
-button:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
+/* Card utama yang menampung TicketTable.
+   Tingginya memenuhi sisa layar, dan isi di dalam yang akan scroll. */
+.card {
+  flex: 1;
+  background: #f5f7fb;
+  border-radius: 18px;
+  padding: 10px 10px 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.18);
+  overflow: hidden; /* penting: page tidak ikut scroll */
 }
 
-/* CONTENT */
-.content {
-  padding: 18px 22px 24px;
+/* Responsif kecil */
+@media (max-width: 767px) {
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 6px 8px 0;
+  }
+
+  .topbar h1 {
+    font-size: 16px;
+  }
+
+  .topbar p {
+    font-size: 10px;
+  }
+
+  .card {
+    padding: 8px 6px 6px;
+  }
 }
 </style>
