@@ -13,7 +13,6 @@
       </div>
     </div>
 
-    <!-- DESKTOP -->
     <div class="table-wrap desktop-only">
       <table>
         <thead>
@@ -48,9 +47,9 @@
               <div class="line-sub">
                 <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span
-                  v-if="cleanOrigin(t) && cleanDestination(t)"
+                  v-if="cleanRouteText(t.origin) && cleanRouteText(t.destination)"
                 >
-                  &nbsp;| {{ cleanOrigin(t) }} ➜ {{ cleanDestination(t) }}
+                  &nbsp;| {{ cleanRouteText(t.origin) }} ➜ {{ cleanRouteText(t.destination) }}
                 </span>
               </div>
             </td>
@@ -74,7 +73,6 @@
       </table>
     </div>
 
-    <!-- MOBILE -->
     <div class="mobile-list">
       <div v-if="!loading && pagedTickets.length === 0" class="empty">
         Belum ada data tiket.
@@ -109,10 +107,11 @@
             <div class="sub">
               <span v-if="depTime(t)">{{ depTime(t) }}</span>
               <span
-                v-if="cleanOrigin(t) && cleanDestination(t)"
+                v-if="cleanRouteText(t.origin) && cleanRouteText(t.destination)"
               >
-                &nbsp;| {{ cleanOrigin(t) }} ➜ {{ cleanDestination(t) }}
+                &nbsp;| {{ cleanRouteText(t.origin) }} ➜ {{ cleanRouteText(t.destination) }}
               </span>
+
             </div>
           </div>
         </div>
@@ -224,20 +223,6 @@ const prevPage = () => {
   }
 };
 
-// utility buang junk
-const cleanJunk = (s) => {
-  if (!s) return '';
-  return String(s)
-    .replace(/Kami akan segera menerbitkan tiket Anda/gi, ' ')
-    .replace(/Kami tengah memantau status penerbitan tiket dengan saksama/gi, ' ')
-    .replace(/Kami telah menerima pembayaran tiket pesawat Anda/gi, ' ')
-    .replace(/Kami akan segera memprosesnya!?/gi, ' ')
-    .replace(/Tiket akan diterbitkan dalam waktu[^.\n]*/gi, ' ')
-    .replace(/\bicon\b/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
@@ -252,12 +237,15 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  raw = cleanJunk(raw);
-
-  raw = raw.replace(
-    /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
-    ''
-  );
+  raw = raw
+    .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
+    .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
+    .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
+    .replace(/^icon\b.*$/gim, '')
+    .replace(
+      /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
+      ''
+    );
 
   return raw
     .split(/\r?\n/)
@@ -268,17 +256,14 @@ const safePassenger = (t) => {
     .trim();
 };
 
-const cleanOrigin = (t) => cleanJunk(t.origin || '');
-const cleanDestination = (t) => cleanJunk(t.destination || '');
-
 const depDate = (t) =>
   t.date || t.departure_date || t.flight_date || '';
 
 const depTime = (t) =>
-  cleanJunk(t.time || t.departure_time || '');
+  t.time || t.departure_time || '';
 
 const airline = (t) =>
-  cleanJunk(t.operator || t.airline || '');
+  t.operator || t.airline || '';
 
 const formatPrice = (price) => {
   if (price == null || price === '') return '-';
@@ -299,5 +284,256 @@ onMounted(() => fetchTickets(1));
 </script>
 
 <style scoped>
-/* (style sama seperti versi kamu, tidak diubah) */
+.ticket-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.total-label {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+}
+
+.actions button:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #eff6ff;
+  z-index: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #1f2937;
+}
+
+.pnr {
+  font-weight: 600;
+  color: #111827;
+}
+
+.flight-info .line-main {
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.flight-info .passenger {
+  font-weight: 600;
+  margin-right: 4px;
+  color: #111827;
+}
+
+.flight-info .date {
+  font-weight: 500;
+  color: #111827;
+}
+
+.flight-info .airline {
+  color: #6b7280;
+}
+
+.flight-info .line-sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.price {
+  font-weight: 600;
+  color: #111827;
+}
+
+.link {
+  color: #2563eb;
+  font-size: 11px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.pending {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.empty {
+  text-align: center;
+  padding: 12px 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.mobile-list {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ticket-card {
+  padding: 10px 10px 8px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 16px rgba(148, 163, 253, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label {
+  font-size: 9px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.value {
+  font-size: 12px;
+  color: #111827;
+}
+
+.value.strong {
+  font-weight: 600;
+}
+
+.sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.pagination {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.nav-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-info {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none;
+  }
+  .mobile-list {
+    display: block;
+  }
+  .pagination {
+    justify-content: center;
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block;
+  }
+}
 </style>
