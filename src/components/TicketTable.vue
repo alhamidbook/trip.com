@@ -4,9 +4,10 @@
       <div>
         <div class="title">Tiket Issued Trip.com</div>
         <div class="subtitle">
-          Data otomatis dari email
+          Data otomatis dari email Trip.com:
+          <strong>"Fwd: Pembayaran Berhasil"</strong>
+          &amp;
           <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
-          (Trip.com).
         </div>
       </div>
 
@@ -40,16 +41,22 @@
               {{ t.pnr || t.booking_no || '-' }}
             </td>
 
-            <!-- Passenger + Flight info -->
+            <!-- Penumpang + Info Penerbangan -->
             <td class="flight-info">
               <div class="line-main">
-                <span v-if="t.passenger" class="passenger">
+                <span
+                  v-if="t.passenger"
+                  class="passenger"
+                >
                   {{ t.passenger }}
                 </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
-                <span class="airline" v-if="airline(t)">
+                <span
+                  class="airline"
+                  v-if="airline(t)"
+                >
                   • {{ airline(t) }}
                 </span>
               </div>
@@ -61,11 +68,11 @@
               </div>
             </td>
 
-            <!-- PDF -->
+            <!-- PDF (hanya jika sudah ada dari email Konfirmasi) -->
             <td>
               <a
-                v-if="pdfUrl(t)"
-                :href="pdfUrl(t)"
+                v-if="t.pdf_url"
+                :href="t.pdf_url"
                 target="_blank"
                 rel="noopener"
                 class="link"
@@ -75,7 +82,7 @@
               <span v-else>-</span>
             </td>
 
-            <!-- Harga (belum ada dari Trip.com → default "-") -->
+            <!-- Total Harga (dari email Pembayaran Berhasil → kolom Total) -->
             <td class="price">
               {{ formatPrice(t.price || t.total_price) }}
             </td>
@@ -86,7 +93,10 @@
 
     <!-- MOBILE LIST -->
     <div class="mobile-list">
-      <div v-if="!loading && tickets.length === 0" class="empty">
+      <div
+        v-if="!loading && tickets.length === 0"
+        class="empty"
+      >
         Belum ada data tiket.
       </div>
 
@@ -102,7 +112,10 @@
           </div>
         </div>
 
-        <div class="row" v-if="t.passenger">
+        <div
+          class="row"
+          v-if="t.passenger"
+        >
           <div class="label">Penumpang</div>
           <div class="value">
             {{ t.passenger }}
@@ -110,7 +123,7 @@
         </div>
 
         <div class="row">
-          <div class="label">Tanggal & Rute</div>
+          <div class="label">Tanggal &amp; Rute</div>
           <div class="value">
             <div>
               {{ depDate(t) || '-' }}
@@ -129,8 +142,8 @@
           <div class="label">PDF Ticket</div>
           <div class="value">
             <a
-              v-if="pdfUrl(t)"
-              :href="pdfUrl(t)"
+              v-if="t.pdf_url"
+              :href="t.pdf_url"
               target="_blank"
               rel="noopener"
               class="link"
@@ -150,7 +163,12 @@
       </div>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p
+      v-if="error"
+      class="error"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 
@@ -181,24 +199,22 @@ const fetchTickets = async () => {
 };
 
 // Helpers sesuai struktur DB Worker
-const depDate = (t) => t.date || t.departure_date || t.flight_date || '';
-const depTime = (t) => t.time || t.departure_time || '';
-const airline = (t) => t.operator || t.airline || '';
+const depDate = (t) =>
+  t.date || t.departure_date || t.flight_date || '';
 
-const pdfUrl = (t) => {
-  if (t.pdf_url) return t.pdf_url;
-  if (t.pnr) {
-    // fallback: Worker /pdf/:pnr
-    return `https://tripcom-worker.alhamidbook.workers.dev/pdf/${encodeURIComponent(
-      t.pnr
-    )}`;
-  }
-  return '';
-};
+const depTime = (t) =>
+  t.time || t.departure_time || '';
+
+const airline = (t) =>
+  t.operator || t.airline || '';
 
 const formatPrice = (price) => {
   if (price == null || price === '') return '-';
-  const n = Number(price);
+  const n = Number(
+    typeof price === 'string'
+      ? price.replace(/[^\d.-]/g, '')
+      : price
+  );
   if (isNaN(n)) return price;
   return n.toLocaleString('id-ID', {
     style: 'currency',
