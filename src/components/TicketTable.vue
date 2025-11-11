@@ -1,6 +1,6 @@
 <template>
   <div class="ticket-table">
-    <!-- Header list di dalam card (bukan page baru) -->
+    <!-- Header di dalam card -->
     <div class="card-head">
       <div>
         <div class="title">Tiket Issued Trip.com</div>
@@ -13,8 +13,8 @@
       </div>
 
       <div class="actions">
-        <span class="count">Total: {{ tickets.length }}</span>
-        <button @click="fetchTickets" :disabled="loading">
+        <span class="count">Total: {{ total }}</span>
+        <button @click="fetchTickets(currentPage)" :disabled="loading">
           {{ loading ? 'Refresh...' : 'Refresh' }}
         </button>
       </div>
@@ -32,12 +32,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr
-            v-if="!loading && pagedTickets.length === 0"
-          >
-            <td colspan="4" class="empty">
-              Belum ada data tiket.
-            </td>
+          <tr v-if="!loading && pagedTickets.length === 0">
+            <td colspan="4" class="empty">Belum ada data tiket.</td>
           </tr>
 
           <tr
@@ -95,7 +91,7 @@
       </table>
     </div>
 
-    <!-- MOBILE LIST (scroll area) -->
+    <!-- MOBILE LIST -->
     <div class="mobile-list">
       <div
         v-if="!loading && pagedTickets.length === 0"
@@ -175,7 +171,7 @@
       <button
         class="nav-btn"
         @click="prevPage"
-        :disabled="currentPage === 1"
+        :disabled="currentPage === 1 || loading"
       >
         ← Prev
       </button>
@@ -185,7 +181,7 @@
       <button
         class="nav-btn"
         @click="nextPage"
-        :disabled="currentPage === totalPages"
+        :disabled="currentPage === totalPages || loading"
       >
         Next →
       </button>
@@ -211,108 +207,33 @@ const loading = ref(false);
 const error = ref('');
 
 const currentPage = ref(1);
+const totalPages = ref(1);
+const total = ref(0);
 const pageSize = 10;
 
-const getDepartureDateTime = (t) => {
-  const dateStr = t.date || t.departure_date || t.flight_date || '';
-  const timeStr = t.time || t.departure_time || '';
-
-  if (!dateStr) return null;
-  const trimmed = String(dateStr).trim();
-
-  const monthMap = {
-    januari: 0,
-    febuari: 1,
-    februari: 1,
-    maret: 2,
-    april: 3,
-    mei: 4,
-    juni: 5,
-    juli: 6,
-    agustus: 7,
-    september: 8,
-    oktober: 9,
-    november: 10,
-    desember: 11,
-    january: 0,
-    february: 1,
-    march: 2,
-    april: 3,
-    may: 4,
-    june: 5,
-    july: 6,
-    august: 7,
-    september: 8,
-    october: 9,
-    december: 11
-  };
-
-  const m = trimmed.match(/(\d{1,2})\s+([A-Za-zÀ-ÖØ-öø-ÿ]+)\s+(\d{4})/);
-  if (m) {
-    const day = parseInt(m[1], 10);
-    const monNameRaw = m[2].toLowerCase();
-    const year = parseInt(m[3], 10);
-    const month =
-      monthMap[monNameRaw] !== undefined
-        ? monthMap[monNameRaw]
-        : new Date(`${monNameRaw} 1, 2000`).getMonth();
-
-    if (!isNaN(day) && !isNaN(year) && month >= 0 && month <= 11) {
-      let hh = 0;
-      let mm = 0;
-      if (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) {
-        const [h, mi] = timeStr.split(':');
-        hh = parseInt(h, 10) || 0;
-        mm = parseInt(mi, 10) || 0;
-      }
-      const dt = new Date(year, month, day, hh, mm, 0);
-      if (!isNaN(dt.getTime())) return dt;
-    }
-  }
-
-  const dt1 = new Date(`${trimmed} ${timeStr}`);
-  if (!isNaN(dt1.getTime())) return dt1;
-
-  const dt2 = new Date(trimmed);
-  if (!isNaN(dt2.getTime())) return dt2;
-
-  return null;
-};
-
-const fetchTickets = async () => {
+/* Ambil data dari server per halaman */
+const fetchTickets = async (page = 1) => {
   loading.value = true;
   error.value = '';
+
   try {
-    const res = await fetch(API_URL);
+    const res = await fetch(`${API_URL}?page=${page}&pageSize=${pageSize}`);
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
+
     const data = await res.json();
-    const arr = Array.isArray(data) ? data : [];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const items = Array.isArray(data.items)
+      ? data.items
+      : Array.isArray(data)
+        ? data
+        : [];
 
-    tickets.value = arr
-      .map((t) => ({
-        ...t,
-        _dt: getDepartureDateTime(t)
-      }))
-      .sort((a, b) => {
-        const ad = a._dt;
-        const bd = b._dt;
-
-        if (!ad && !bd) return 0;
-        if (!ad) return 1;
-        if (!bd) return -1;
-
-        const aPast = ad < today;
-        const bPast = bd < today;
-
-        if (aPast !== bPast) return aPast ? 1 : -1;
-
-        return ad - bd;
-      });
-
-    currentPage.value = 1;
+    tickets.value = items;
+    currentPage.value = data.page || page;
+    totalPages.value =
+      data.totalPages ||
+      Math.max(1, Math.ceil((data.total || items.length) / pageSize));
+    total.value = data.total != null ? data.total : items.length;
   } catch (e) {
     error.value = e.message || 'Failed to fetch';
   } finally {
@@ -320,23 +241,23 @@ const fetchTickets = async () => {
   }
 };
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(tickets.value.length / pageSize))
-);
+/* Alias: sekarang server sudah kirim per-page, jadi langsung pakai tickets */
+const pagedTickets = computed(() => tickets.value);
 
-const pagedTickets = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  return tickets.value.slice(start, start + pageSize);
-});
-
+/* Next/Prev minta ke server */
 const nextPage = () => {
-  if (currentPage.value < totalPages.value) currentPage.value += 1;
+  if (currentPage.value < totalPages.value && !loading.value) {
+    fetchTickets(currentPage.value + 1);
+  }
 };
 
 const prevPage = () => {
-  if (currentPage.value > 1) currentPage.value -= 1;
+  if (currentPage.value > 1 && !loading.value) {
+    fetchTickets(currentPage.value - 1);
+  }
 };
 
+/* Bersihkan passenger */
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
@@ -395,7 +316,7 @@ const formatPrice = (price) => {
   });
 };
 
-onMounted(fetchTickets);
+onMounted(() => fetchTickets(1));
 </script>
 
 <style scoped>
@@ -404,10 +325,10 @@ onMounted(fetchTickets);
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  min-height: 0; /* penting supaya area scroll bekerja dalam card */
+  min-height: 0;
 }
 
-/* Header di dalam card */
+/* Header */
 .card-head {
   display: flex;
   justify-content: space-between;
@@ -475,7 +396,7 @@ onMounted(fetchTickets);
   box-shadow: none;
 }
 
-/* Desktop table area (scroll) */
+/* Table area */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -573,7 +494,7 @@ th {
   color: #9ca3af;
 }
 
-/* Mobile list */
+/* Mobile */
 .mobile-list {
   display: none;
   flex: 1;
@@ -652,17 +573,10 @@ th {
   color: #6b7280;
 }
 
-/* Error */
-.error {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #dc2626;
-}
-
 /* Responsive */
 @media (max-width: 767px) {
   .card-head {
-    gap: 8px;
+    gap: 6px;
   }
 
   .title {
