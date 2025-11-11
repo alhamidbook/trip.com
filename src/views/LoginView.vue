@@ -7,12 +7,22 @@
       <form @submit.prevent="handleLogin">
         <label>
           Username
-          <input v-model="username" type="text" required autocomplete="username" />
+          <input
+            v-model="username"
+            type="text"
+            required
+            autocomplete="username"
+          />
         </label>
 
         <label>
           Password
-          <input v-model="password" type="password" required autocomplete="current-password" />
+          <input
+            v-model="password"
+            type="password"
+            required
+            autocomplete="current-password"
+          />
         </label>
 
         <button type="submit" :disabled="loading">
@@ -77,71 +87,98 @@ const handleLogin = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at top, #1d2433, #020817);
-  padding: 16px;
+  padding: 24px 16px;
+  background: radial-gradient(
+      circle at top left,
+      #e0f2fe 0%,
+      #eff6ff 40%,
+      #dbeafe 100%
+    );
 }
+
 .login-card {
   width: 100%;
-  max-width: 380px;
-  background: rgba(15, 23, 42, 0.98);
-  border-radius: 18px;
-  padding: 24px 22px 26px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.8);
-  color: #e5e7eb;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 26px 24px 24px;
+  box-shadow: 0 14px 40px rgba(148, 163, 253, 0.25);
+  color: #0f172a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
 h1 {
-  margin: 0 0 4px;
-  font-size: 20px;
+  margin: 0 0 6px;
+  font-size: 22px;
   font-weight: 600;
+  color: #0f172a;
 }
+
 .subtitle {
   margin: 0 0 18px;
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 13px;
+  color: #6b7280;
 }
+
 form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
+
 label {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 12px;
+  color: #4b5563;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
+
 input {
-  padding: 8px 9px;
-  border-radius: 9px;
-  border: 1px solid #374151;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #cbd5f5;
   outline: none;
   font-size: 13px;
-  background: #020817;
-  color: #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+  transition: all 0.15s ease;
 }
+
 input:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  background: #ffffff;
 }
+
 button {
-  margin-top: 4px;
-  padding: 9px;
+  margin-top: 6px;
+  padding: 10px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(to right, #22c55e, #22d3ee);
-  color: #020817;
+  background: linear-gradient(to right, #2563eb, #38bdf8);
+  color: #ffffff;
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  transition: all 0.15s ease;
 }
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+}
+
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: default;
+  box-shadow: none;
 }
+
 .error {
   margin-top: 6px;
   font-size: 11px;
-  color: #f97316;
+  color: #dc2626;
 }
 </style>
