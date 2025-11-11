@@ -21,7 +21,7 @@
             @click="openSearch"
             :disabled="loading"
           >
-            Cari Nama
+            Cari
           </button>
 
           <!-- 2. Pilih Rentang Tanggal -->
@@ -31,7 +31,7 @@
             @click="openRangeModal"
             :disabled="loading"
           >
-            Pilih Rentang Tanggal
+            Pilih Tanggal
           </button>
 
           <!-- 3. Refresh -->
