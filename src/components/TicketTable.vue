@@ -6,7 +6,7 @@
         <div class="subtitle">
           Data otomatis dari email Trip.com:
           <strong>"Fwd: Pembayaran Berhasil"</strong>
-          &
+          &amp;
           <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
         </div>
       </div>
@@ -44,13 +44,19 @@
             <!-- Penumpang + Info Penerbangan -->
             <td class="flight-info">
               <div class="line-main">
-                <span v-if="t.passenger" class="passenger">
-                  {{ t.passenger }}
+                <span
+                  v-if="safePassenger(t)"
+                  class="passenger"
+                >
+                  {{ safePassenger(t) }}
                 </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
-                <span class="airline" v-if="airline(t)">
+                <span
+                  class="airline"
+                  v-if="airline(t)"
+                >
                   • {{ airline(t) }}
                 </span>
               </div>
@@ -62,7 +68,7 @@
               </div>
             </td>
 
-            <!-- PDF (muncul hanya jika sudah ada dari Konfirmasi) -->
+            <!-- PDF (hanya jika sudah ada dari email Konfirmasi) -->
             <td>
               <a
                 v-if="t.pdf_url"
@@ -73,10 +79,10 @@
               >
                 Download
               </a>
-              <span v-else>-</span>
+              <span v-else class="pending">Akan segera terbit</span>
             </td>
 
-            <!-- Total Harga (pakai nilai yang sudah dihitung di Worker) -->
+            <!-- Total Harga -->
             <td class="price">
               {{ formatPrice(t.price || t.total_price) }}
             </td>
@@ -87,7 +93,10 @@
 
     <!-- MOBILE LIST -->
     <div class="mobile-list">
-      <div v-if="!loading && tickets.length === 0" class="empty">
+      <div
+        v-if="!loading && tickets.length === 0"
+        class="empty"
+      >
         Belum ada data tiket.
       </div>
 
@@ -103,10 +112,13 @@
           </div>
         </div>
 
-        <div class="row" v-if="t.passenger">
+        <div
+          class="row"
+          v-if="safePassenger(t)"
+        >
           <div class="label">Penumpang</div>
           <div class="value">
-            {{ t.passenger }}
+            {{ safePassenger(t) }}
           </div>
         </div>
 
@@ -138,7 +150,7 @@
             >
               Download
             </a>
-            <span v-else>-</span>
+            <span v-else class="pending">Akan segera terbit</span>
           </div>
         </div>
 
@@ -151,7 +163,10 @@
       </div>
     </div>
 
-    <p v-if="error" class="error">
+    <p
+      v-if="error"
+      class="error"
+    >
       {{ error }}
     </p>
   </div>
@@ -160,6 +175,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
+// Endpoint Worker API
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
 
@@ -167,11 +183,14 @@ const tickets = ref([]);
 const loading = ref(false);
 const error = ref('');
 
+/**
+ * Ambil data tiket dari Worker
+ */
 const fetchTickets = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch(API_URL, { cache: 'no-store' });
+    const res = await fetch(API_URL);
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
     const data = await res.json();
     tickets.value = Array.isArray(data) ? data : [];
@@ -182,6 +201,19 @@ const fetchTickets = async () => {
   }
 };
 
+// Sanitizer penumpang: hilangkan noise seperti
+// "Kami akan segera menerbitkan tiket Anda"
+const safePassenger = (t) => {
+  const raw = t.passenger || '';
+  if (!raw) return '';
+  const cleaned = raw
+    .replace(/kami akan segera menerbitkan tiket anda/ig, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned || '';
+};
+
+// Helpers sesuai struktur DB Worker
 const depDate = (t) =>
   t.date || t.departure_date || t.flight_date || '';
 
@@ -198,7 +230,7 @@ const formatPrice = (price) => {
       ? price.replace(/[^\d.-]/g, '')
       : price
   );
-  if (isNaN(n) || n === 0) return '-';
+  if (isNaN(n)) return price;
   return n.toLocaleString('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -333,6 +365,12 @@ th {
 
 .link:hover {
   text-decoration: underline;
+}
+
+.pending {
+  font-size: 9px;
+  color: #9ca3af;
+  font-style: italic;
 }
 
 .empty {
