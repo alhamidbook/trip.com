@@ -275,22 +275,34 @@ const formatPrice = (price) => {
   });
 };
 
-/* PNR helpers */
+/* ====== PNR / BOOKING DISPLAY HELPERS ====== */
+
+const isBookingNo = (v) => /^\d{8,}$/.test(v);
+const isPnrCode = (v) => /^[A-Z0-9]{5,8}$/i.test(v);
 
 const extractRealPnr = (t) => {
-  if (t.real_pnr) return String(t.real_pnr).trim();
+  // 1) Jika ada kolom real_pnr yang valid
+  if (t.real_pnr) {
+    const v = String(t.real_pnr).trim().toUpperCase();
+    if (isPnrCode(v)) return v;
+  }
+
+  // 2) Cek di extra: "PNR=XXXXXX"
   const extra = t.extra ? String(t.extra) : '';
   const m = extra.match(/PNR=([A-Z0-9]{5,8})/i);
   return m ? m[1].toUpperCase() : '';
 };
 
 const extractBookingNo = (t) => {
+  // 1) booking_no langsung
   const direct = t.booking_no ? String(t.booking_no).trim() : '';
-  if (direct && /^\d{8,}$/.test(direct)) return direct;
+  if (isBookingNo(direct)) return direct;
 
+  // 2) pnr yang numeric panjang (kasus lama pembayaran)
   const p = t.pnr ? String(t.pnr).trim() : '';
-  if (/^\d{8,}$/.test(p)) return p;
+  if (isBookingNo(p)) return p;
 
+  // 3) dari extra: "NoPemesanan=..."
   const extra = t.extra ? String(t.extra) : '';
   const m = extra.match(/NoPemesanan=(\d+)/i);
   return m ? m[1] : '';
@@ -298,17 +310,30 @@ const extractBookingNo = (t) => {
 
 const displayPnr = (t) => {
   const booking = extractBookingNo(t);
+
+  // dbPnr bisa berisi apa saja (termasuk "TICKET"), kita validasi dulu
+  const rawDbPnr = t.pnr ? String(t.pnr).trim().toUpperCase() : '';
   const real = extractRealPnr(t);
 
-  const dbPnr = t.pnr ? String(t.pnr).trim() : '';
-  const isDbPnrCode = dbPnr && !/^\d{8,}$/.test(dbPnr);
-  const finalPnr = real || (isDbPnrCode ? dbPnr : '');
+  let finalPnr = '';
 
+  if (real && isPnrCode(real)) {
+    finalPnr = real;
+  } else if (isPnrCode(rawDbPnr)) {
+    // hanya pakai pnr dari DB jika formatnya benar 5-8 alfanumerik
+    finalPnr = rawDbPnr;
+  }
+
+  // Jika dua-duanya ada dan beda → tampil "booking / PNR"
   if (booking && finalPnr && booking !== finalPnr) {
     return `${booking} / ${finalPnr}`;
   }
 
-  return booking || finalPnr || dbPnr || '-';
+  // Kalau cuma ada satu
+  if (booking) return booking;
+  if (finalPnr) return finalPnr;
+
+  return '-';
 };
 
 onMounted(() => fetchTickets(1));
