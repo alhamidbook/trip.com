@@ -180,7 +180,7 @@
             <div class="label">Nomor Pemesanan / PNR</div>
             <div class="value strong">
               {{ displayPnr(t) }}
-            </td>
+            </div>
           </div>
 
           <div class="row" v-if="safePassenger(t)">
@@ -331,7 +331,7 @@ const totalPages = ref(1);
 const pageSize = 10;
 
 // Filter modes
-const isFilterMode = ref(false); // true jika cari nama atau rentang tanggal aktif
+const isFilterMode = ref(false);
 
 // Range modal
 const showModal = ref(false);
@@ -602,6 +602,13 @@ const formatPrice = (price) => {
   });
 };
 
+/* PNR + BOOKING DISPLAY
+   Konsisten dengan worker: 
+   - booking_no: No. Pemesanan numeric panjang
+   - real_pnr: Kode Booking (PNR) huruf/angka 5-8 digit
+   - t.pnr bisa berisi booking_no (payment) atau kode booking
+*/
+
 const extractRealPnr = (t) => {
   if (t.real_pnr) {
     return String(t.real_pnr).trim();
@@ -612,7 +619,11 @@ const extractRealPnr = (t) => {
 };
 
 const extractBookingNo = (t) => {
-  // booking number kita simpan sebagai pnr (numerik) / atau di extra
+  const directBooking = t.booking_no ? String(t.booking_no).trim() : '';
+  if (directBooking && /^\d{8,}$/.test(directBooking)) {
+    return directBooking;
+  }
+
   const p = t.pnr ? String(t.pnr).trim() : '';
   if (/^\d{8,}$/.test(p)) return p;
 
@@ -625,7 +636,6 @@ const displayPnr = (t) => {
   const booking = extractBookingNo(t);
   const real = extractRealPnr(t);
 
-  // Kalau pnr di DB ternyata sudah kode booking (AIXQPT) dan bukan angka panjang
   const dbPnr = t.pnr ? String(t.pnr).trim() : '';
   const isDbPnrCode = dbPnr && !/^\d{8,}$/.test(dbPnr);
 
@@ -636,7 +646,7 @@ const displayPnr = (t) => {
   }
 
   return booking || finalPnr || dbPnr || '-';
-}; 
+};
 
 onMounted(() => {
   fetchPage(1);
