@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <!-- SEARCH BAR -->
+      <!-- SEARCH BAR (muncul setelah klik "Cari Nama") -->
       <div v-if="showSearch" class="search-bar">
         <input
           v-model="searchName"
@@ -130,10 +130,11 @@
                 <div class="line-sub">
                   <span v-if="depTime(t)">{{ depTime(t) }}</span>
                   <span
-                    v-if="cleanOrigin(t) && cleanDestination(t)"
+                    v-if="cleanRouteText(t.origin) && cleanRouteText(t.destination)"
                   >
-                    &nbsp;| {{ cleanOrigin(t) }} ➜ {{ cleanDestination(t) }}
+                    &nbsp;| {{ cleanRouteText(t.origin) }} ➜ {{ cleanRouteText(t.destination) }}
                   </span>
+
                 </div>
               </td>
               <td>
@@ -202,9 +203,9 @@
               <div class="sub">
                 <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span
-                  v-if="cleanOrigin(t) && cleanDestination(t)"
+                  v-if="cleanRouteText(t.origin) && cleanRouteText(t.destination)"
                 >
-                  &nbsp;| {{ cleanOrigin(t) }} ➜ {{ cleanDestination(t) }}
+                  &nbsp;| {{ cleanRouteText(t.origin) }} ➜ {{ cleanRouteText(t.destination) }}
                 </span>
               </div>
             </div>
@@ -235,7 +236,7 @@
         </div>
       </div>
 
-      <!-- PAGINATION -->
+      <!-- PAGINATION: hanya mode normal (tanpa filter) -->
       <div
         v-if="!isFilterMode && totalPages > 1"
         class="pagination"
@@ -335,7 +336,7 @@ const totalPages = ref(1);
 const pageSize = 10;
 
 // Filter modes
-const isFilterMode = ref(false);
+const isFilterMode = ref(false); // true jika cari nama atau rentang tanggal aktif
 
 // Range modal
 const showModal = ref(false);
@@ -346,7 +347,7 @@ const endDate = ref('');
 const showSearch = ref(false);
 const searchName = ref('');
 
-// Checkbox
+// Checkbox total
 const selectedKeys = ref([]);
 
 /* AUTH */
@@ -355,7 +356,7 @@ const logout = () => {
   router.push({ name: 'Login' });
 };
 
-/* Utils */
+/* Helpers */
 
 const ticketKey = (t) =>
   t.id ||
@@ -370,20 +371,6 @@ const parsePriceNumber = (price) => {
   return isNaN(n) ? 0 : n;
 };
 
-// Hapus kalimat marketing / junk
-const cleanJunk = (s) => {
-  if (!s) return '';
-  return String(s)
-    .replace(/Kami akan segera menerbitkan tiket Anda/gi, ' ')
-    .replace(/Kami tengah memantau status penerbitan tiket dengan saksama/gi, ' ')
-    .replace(/Kami telah menerima pembayaran tiket pesawat Anda/gi, ' ')
-    .replace(/Kami akan segera memprosesnya!?/gi, ' ')
-    .replace(/Tiket akan diterbitkan dalam waktu[^.\n]*/gi, ' ')
-    .replace(/\bicon\b/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
 const selectedTotal = computed(() => {
   const set = new Set(selectedKeys.value);
   return tickets.value.reduce((sum, t) => {
@@ -394,7 +381,7 @@ const selectedTotal = computed(() => {
   }, 0);
 });
 
-/* FETCH: MODE NORMAL */
+/* FETCH: MODE NORMAL (PAGINATED) */
 
 const fetchPage = async (page = 1) => {
   loading.value = true;
@@ -510,6 +497,7 @@ const fetchByName = async (name) => {
 
 /* ACTIONS */
 
+// Refresh ke mode normal halaman 1
 const refresh = () => {
   startDate.value = '';
   endDate.value = '';
@@ -562,7 +550,7 @@ const applySearch = async () => {
   await fetchByName(name);
 };
 
-/* Passenger & Route cleaning */
+/* Passenger cleaning */
 
 const safePassenger = (t) => {
   let raw = t.passenger || '';
@@ -578,7 +566,11 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  raw = cleanJunk(raw);
+  raw = raw
+    .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
+    .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
+    .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
+    .replace(/^icon\b.*$/gim, '');
 
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
@@ -596,17 +588,14 @@ const safePassenger = (t) => {
   return cleaned;
 };
 
-const cleanOrigin = (t) => cleanJunk(t.origin || '');
-const cleanDestination = (t) => cleanJunk(t.destination || '');
-
 const depDate = (t) =>
   t.date || t.departure_date || t.flight_date || '';
 
 const depTime = (t) =>
-  cleanJunk(t.time || t.departure_time || '');
+  t.time || t.departure_time || '';
 
 const airline = (t) =>
-  cleanJunk(t.operator || t.airline || '');
+  t.operator || t.airline || '';
 
 const formatPrice = (price) => {
   const n = parsePriceNumber(price);
@@ -618,11 +607,483 @@ const formatPrice = (price) => {
   });
 };
 
+
+const cleanRouteText = (value) => {
+  if (!value) return '';
+  let s = String(value);
+
+  s = s.replace(/Kami akan segera menerbitkan tiket Anda/gi, '');
+  s = s.replace(/Kami tengah memantau status penerbitan tiket dengan saksama/gi, '');
+  s = s.replace(/Kami telah menerima pembayaran tiket pesawat Anda/gi, '');
+  s = s.replace(/Kami akan segera memprosesnya/gi, '');
+  s = s.replace(/Tiket akan diterbitkan dalam waktu[^|]*/gi, '');
+  s = s.replace(/\bicon\b/gi, '');
+
+  // Buang sisa spasi
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+};
+  
 onMounted(() => {
   fetchPage(1);
 });
 </script>
 
 <style scoped>
-/* (style tetap persis seperti yang kamu kirim, tidak diubah) */
+.page {
+  height: 100vh;
+  padding: 18px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    135deg,
+    #0052ff 0%,
+    #1da0ff 35%,
+    #4fd5ff 65%,
+    #ff6ad5 100%
+  );
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.card {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  background: #f5f7fb;
+  border-radius: 18px;
+  padding: 18px 18px 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.18);
+  color: #0f172a;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+/* Header */
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.total-label {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.badge-filter {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 10px;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.btn {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+  transition: all 0.15s ease;
+}
+
+.btn.small {
+  padding: 4px 10px;
+  font-size: 10px;
+  box-shadow: none;
+}
+
+.btn.outline {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  box-shadow: none;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: #f9fafb;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #2563eb;
+}
+
+.btn.outline:hover:not(:disabled) {
+  background: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Search bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  margin-bottom: 2px;
+  font-size: 11px;
+}
+
+.search-input {
+  flex: 0 0 180px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid #cbd5f5;
+  font-size: 11px;
+  outline: none;
+}
+
+/* Table wrap */
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th,
+td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #eff6ff;
+  z-index: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: #1f2937;
+}
+
+.select {
+  width: 40px;
+}
+
+.pnr {
+  font-weight: 600;
+  color: #111827;
+}
+
+.flight-info .line-main {
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.flight-info .passenger {
+  font-weight: 600;
+  margin-right: 4px;
+  color: #111827;
+}
+
+.flight-info .date {
+  font-weight: 500;
+  color: #111827;
+}
+
+.flight-info .airline {
+  color: #6b7280;
+}
+
+.flight-info .line-sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.price {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Links & status */
+.link {
+  color: #2563eb;
+  font-size: 11px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.pending {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.empty {
+  text-align: center;
+  padding: 12px 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Mobile list */
+.mobile-list {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ticket-card {
+  padding: 10px 10px 8px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 16px rgba(148, 163, 253, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.select-row {
+  align-items: flex-start;
+}
+
+.label {
+  font-size: 9px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.value {
+  font-size: 12px;
+  color: #111827;
+}
+
+.value.strong {
+  font-weight: 600;
+}
+
+.sub {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Pagination */
+.pagination {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.nav-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-info {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+/* Selected total */
+.selected-total {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #111827;
+}
+
+/* Error */
+.error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #dc2626;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: #ffffff;
+  padding: 16px 16px 12px;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+  color: #111827;
+}
+
+.modal h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  color: #4b5563;
+}
+
+.modal input[type='date'] {
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.modal-submit {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.modal-cancel {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.hint {
+  margin: 2px 0 0;
+  font-size: 9px;
+  color: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .page {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 12px 10px 8px;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-list {
+    display: block;
+  }
+
+  .pagination {
+    justify-content: center;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: block;
+  }
+}
 </style>
