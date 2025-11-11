@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1>Trip.com Ticket Monitor</h1>
+      <h1>Al-Hamid Ticket Monitor</h1>
       <p class="subtitle">Masuk untuk melihat tiket issued dari Trip.com</p>
 
       <form @submit.prevent="handleLogin">
