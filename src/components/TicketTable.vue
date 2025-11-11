@@ -175,7 +175,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 
-// Endpoint Worker API
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
 
@@ -183,9 +182,6 @@ const tickets = ref([]);
 const loading = ref(false);
 const error = ref('');
 
-/**
- * Ambil data tiket dari Worker
- */
 const fetchTickets = async () => {
   loading.value = true;
   error.value = '';
@@ -202,40 +198,43 @@ const fetchTickets = async () => {
 };
 
 /**
- * Bersihkan field passenger dari kalimat-kalimat info yang bukan nama.
- * Termasuk:
- * - "Kami akan segera menerbitkan tiket Anda"
- * - "Tiket akan diterbitkan dalam waktu ..."
- * - baris yang hanya "icon" dsb.
+ * Sanitizer nama penumpang:
+ * - hapus frasa marketing seperti:
+ *   "Kami akan segera menerbitkan tiket Anda"
+ *   "Tiket akan diterbitkan dalam waktu ..."
+ *   "icon"
+ * - rapikan whitespace
  */
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
-  // Normalisasi whitespace
-  raw = String(raw).replace(/\r\n/g, '\n');
+  raw = String(raw);
 
-  // Buang baris-baris yang mengandung frasa non-nama
-  const noisePatterns = [
-    /kami akan segera menerbitkan tiket anda/i,
-    /tiket akan diterbitkan dalam waktu/i,
-    /kami akan segera menerbitkan tiket/i,
-    /^icon\s*$/i
+  // Hapus frasa noise di mana pun muncul
+  raw = raw
+    .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
+    .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
+    .replace(/^icon.*$/gim, '');
+
+  // Pecah per baris, buang yang kosong / masih mengandung noise
+  const noise = [
+    /Kami akan segera menerbitkan tiket Anda/i,
+    /Tiket akan diterbitkan dalam waktu/i,
+    /^icon$/i
   ];
 
-  const filteredLines = raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => {
-      if (!line) return false;
-      return !noisePatterns.some((re) => re.test(line));
-    });
+  const cleaned = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !noise.some((re) => re.test(l)))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  const cleaned = filteredLines.join(' ').replace(/\s+/g, ' ').trim();
-  return cleaned || '';
+  return cleaned;
 };
 
-// Helpers sesuai struktur DB Worker
 const depDate = (t) =>
   t.date || t.departure_date || t.flight_date || '';
 
