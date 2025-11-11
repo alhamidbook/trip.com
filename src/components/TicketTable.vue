@@ -1,25 +1,43 @@
 <template>
   <div class="ticket-table">
-    <!-- HEADER DALAM CARD -->
+    <!-- HEADER DI DALAM CARD -->
     <div class="card-head">
       <div class="head-left">
         <div class="title">Tiket Issued Trip.com</div>
-        <div class="count-under">
-          Total: <strong>{{ total }}</strong>
-        </div>
+        <div class="total-label">Total tiket: {{ total }}</div>
       </div>
 
       <div class="actions">
-        <!-- 1. Cari Nama -->
-        <button
-          class="btn"
-          @click="toggleNameSearch"
-          :disabled="loading"
-        >
-          Cari Nama
-        </button>
+        <!-- 1. CARI NAMA -->
+        <div class="search-group">
+          <button
+            class="btn"
+            @click="toggleNameSearch"
+            :disabled="loading"
+          >
+            Cari Nama
+          </button>
+          <div
+            v-if="showNameInput"
+            class="search-inline"
+          >
+            <input
+              v-model="searchName"
+              type="text"
+              placeholder="Input nama"
+              @keyup.enter="applyNameSearch"
+            />
+            <button
+              class="btn small"
+              @click="applyNameSearch"
+              :disabled="loading"
+            >
+              Ok
+            </button>
+          </div>
+        </div>
 
-        <!-- 2. Pilih Rentang Tanggal -->
+        <!-- 2. PILIH RENTANG TANGGAL -->
         <button
           class="btn"
           @click="openDateModal"
@@ -28,19 +46,19 @@
           Pilih Rentang Tanggal
         </button>
 
-        <!-- 3. Refresh -->
+        <!-- 3. REFRESH -->
         <button
           class="btn"
-          @click="fetchTickets(1)"
+          @click="resetFiltersAndReload"
           :disabled="loading"
         >
           {{ loading ? 'Refresh...' : 'Refresh' }}
         </button>
 
-        <!-- 4. Logout -->
+        <!-- 4. LOGOUT -->
         <button
-          class="btn logout-btn"
-          @click="handleLogout"
+          class="btn logout"
+          @click="logout"
           :disabled="loading"
         >
           Logout
@@ -48,74 +66,10 @@
       </div>
     </div>
 
-    <!-- INPUT CARI NAMA -->
-    <div
-      v-if="showNameInput"
-      class="search-name-row"
-    >
-      <input
-        v-model="nameInput"
-        type="text"
-        placeholder="Input nama penumpang"
-        @keyup.enter="applyNameSearch"
-      />
-      <button
-        class="btn small"
-        @click="applyNameSearch"
-        :disabled="loading || !nameInput.trim()"
-      >
-        OK
-      </button>
-      <button
-        v-if="activeNameFilter || nameInput"
-        class="link-clear"
-        type="button"
-        @click="clearNameSearch"
-      >
-        Reset
-      </button>
-    </div>
-
-    <!-- BADGE FILTER RENTANG TANGGAL -->
-    <div
-      v-if="activeStartDate || activeEndDate"
-      class="filter-badge"
-    >
-      Rentang:
-      <strong>{{ activeStartDate || '...' }}</strong>
-      <span>→</span>
-      <strong>{{ activeEndDate || '...' }}</strong>
-      <button
-        type="button"
-        class="link-clear"
-        @click="clearDateRange"
-      >
-        ✕
-      </button>
-    </div>
-
-    <!-- BADGE FILTER NAMA -->
-    <div
-      v-if="activeNameFilter"
-      class="filter-badge"
-    >
-      Nama:
-      <strong>{{ activeNameFilter }}</strong>
-      <button
-        type="button"
-        class="link-clear"
-        @click="clearNameSearch"
-      >
-        ✕
-      </button>
-    </div>
-
-    <!-- TOTAL TERPILIH -->
-    <div
-      v-if="selectedKeys.length > 0"
-      class="selected-total"
-    >
-      Total terpilih: <strong>{{ formatPrice(selectedTotal) }}</strong>
+    <!-- SELECTED TOTAL SUMMARY -->
+    <div class="selected-summary">
+      Total harga tercentang:
+      <strong>{{ formattedSelectedTotal }}</strong>
     </div>
 
     <!-- DESKTOP TABLE (scroll area) -->
@@ -123,37 +77,25 @@
       <table>
         <thead>
           <tr>
-            <th class="check-col"></th>
             <th>Nomor Pemesanan / PNR</th>
             <th>Penumpang &amp; Rute</th>
             <th>Download PDF Ticket</th>
-            <th>Total Harga</th>
+            <th>Total Harga (centang)</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="!loading && pagedTickets.length === 0">
-            <td colspan="5" class="empty">Belum ada data tiket.</td>
+            <td colspan="4" class="empty">Belum ada data tiket.</td>
           </tr>
 
           <tr
             v-for="t in pagedTickets"
-            :key="ticketKey(t)"
+            :key="t.id || t.pnr"
           >
-            <!-- Checkbox pilih -->
-            <td class="check-col">
-              <input
-                type="checkbox"
-                :value="ticketKey(t)"
-                v-model="selectedKeys"
-              />
-            </td>
-
-            <!-- PNR -->
             <td class="pnr">
               {{ t.pnr || t.booking_no || '-' }}
             </td>
 
-            <!-- Penumpang & Rute -->
             <td class="flight-info">
               <div class="line-main">
                 <span
@@ -180,7 +122,6 @@
               </div>
             </td>
 
-            <!-- PDF -->
             <td>
               <a
                 v-if="t.pdf_url"
@@ -194,16 +135,22 @@
               <span v-else class="pending">Akan segera terbit</span>
             </td>
 
-            <!-- Harga -->
             <td class="price">
-              {{ formatPrice(t.price || t.total_price) }}
+              <label class="price-check">
+                <input
+                  type="checkbox"
+                  :checked="isSelected(t)"
+                  @change="toggleSelected(t, $event)"
+                />
+                <span>{{ formatPrice(t.price || t.total_price) }}</span>
+              </label>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- MOBILE LIST (scroll area) -->
+    <!-- MOBILE LIST -->
     <div class="mobile-list">
       <div
         v-if="!loading && pagedTickets.length === 0"
@@ -214,20 +161,9 @@
 
       <div
         v-for="t in pagedTickets"
-        :key="ticketKey(t)"
+        :key="t.id || t.pnr"
         class="ticket-card"
       >
-        <div class="row check-row">
-          <label>
-            <input
-              type="checkbox"
-              :value="ticketKey(t)"
-              v-model="selectedKeys"
-            />
-            Pilih
-          </label>
-        </div>
-
         <div class="row">
           <div class="label">Nomor Pemesanan / PNR</div>
           <div class="value strong">
@@ -278,15 +214,22 @@
         </div>
 
         <div class="row">
-          <div class="label">Total Harga</div>
+          <div class="label">Total Harga (centang)</div>
           <div class="value strong">
-            {{ formatPrice(t.price || t.total_price) }}
+            <label class="price-check">
+              <input
+                type="checkbox"
+                :checked="isSelected(t)"
+                @change="toggleSelected(t, $event)"
+              />
+              <span>{{ formatPrice(t.price || t.total_price) }}</span>
+            </label>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PAGINATION (mode normal & filter nama) -->
+    <!-- PAGINATION (hanya mode normal; filter range/nama dikontrol dari API yg balikin totalPages=1) -->
     <div
       v-if="totalPages > 1"
       class="pagination"
@@ -310,60 +253,53 @@
       </button>
     </div>
 
-    <!-- MODAL RENTANG TANGGAL -->
-    <div
-      v-if="showDateModal"
-      class="modal-backdrop"
-      @click.self="closeDateModal"
-    >
-      <div class="modal">
-        <h3>Pilih Rentang Tanggal</h3>
-        <label>
-          Start Date
-          <input
-            type="date"
-            v-model="tempStartDate"
-          />
-        </label>
-        <label>
-          End Date
-          <input
-            type="date"
-            v-model="tempEndDate"
-          />
-        </label>
-        <div class="modal-actions">
-          <button
-            class="btn"
-            @click="applyDateRange"
-            :disabled="loading"
-          >
-            Tampilkan
-          </button>
-          <button
-            class="btn ghost"
-            @click="clearDateRange"
-            :disabled="loading"
-          >
-            Reset
-          </button>
-          <button
-            class="btn ghost"
-            @click="closeDateModal"
-            :disabled="loading"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
-
+    <!-- ERROR -->
     <p
       v-if="error"
       class="error"
     >
       {{ error }}
     </p>
+
+    <!-- MODAL RENTANG TANGGAL -->
+    <div
+      v-if="showDateModal"
+      class="modal-overlay"
+    >
+      <div class="modal">
+        <h3>Pilih Rentang Tanggal</h3>
+        <label>
+          Start date
+          <input
+            type="date"
+            v-model="rangeStart"
+          />
+        </label>
+        <label>
+          End date
+          <input
+            type="date"
+            v-model="rangeEnd"
+          />
+        </label>
+        <div class="modal-actions">
+          <button
+            class="btn small"
+            @click="applyDateRange"
+            :disabled="loading"
+          >
+            Tampilkan
+          </button>
+          <button
+            class="btn ghost small"
+            @click="closeDateModal"
+            :disabled="loading"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -372,10 +308,10 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { clearAuth } from '../stores/auth';
 
+const router = useRouter();
+
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
-
-const router = useRouter();
 
 const tickets = ref([]);
 const loading = ref(false);
@@ -386,38 +322,41 @@ const totalPages = ref(1);
 const total = ref(0);
 const pageSize = 10;
 
-/* Filter nama */
+/* Filter state */
+const currentFilters = ref({
+  startDate: '',
+  endDate: '',
+  name: ''
+});
+
+/* Cari nama */
 const showNameInput = ref(false);
-const nameInput = ref('');
-const activeNameFilter = ref('');
+const searchName = ref('');
 
-/* Filter tanggal */
+/* Rentang tanggal modal */
 const showDateModal = ref(false);
-const tempStartDate = ref('');
-const tempEndDate = ref('');
-const activeStartDate = ref('');
-const activeEndDate = ref('');
+const rangeStart = ref('');
+const rangeEnd = ref('');
 
-/* Checkbox total */
-const selectedKeys = ref([]);
+/* Checkbox total harga */
+const selectedTickets = ref({}); // key -> numeric price
 
-/* Build query string sesuai filter & pagination */
-const buildQuery = (page = 1) => {
+const buildQueryUrl = (page) => {
   const params = new URLSearchParams();
   params.set('page', page);
   params.set('pageSize', pageSize);
 
-  if (activeNameFilter.value) {
-    params.set('name', activeNameFilter.value);
+  if (currentFilters.value.startDate) {
+    params.set('startDate', currentFilters.value.startDate);
   }
-  if (activeStartDate.value) {
-    params.set('startDate', activeStartDate.value);
+  if (currentFilters.value.endDate) {
+    params.set('endDate', currentFilters.value.endDate);
   }
-  if (activeEndDate.value) {
-    params.set('endDate', activeEndDate.value);
+  if (currentFilters.value.name) {
+    params.set('name', currentFilters.value.name);
   }
 
-  return params.toString();
+  return `${API_URL}?${params.toString()}`;
 };
 
 /* Ambil data dari server per halaman / filter */
@@ -426,8 +365,8 @@ const fetchTickets = async (page = 1) => {
   error.value = '';
 
   try {
-    const qs = buildQuery(page);
-    const res = await fetch(`${API_URL}?${qs}`);
+    const url = buildQueryUrl(page);
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
 
     const data = await res.json();
@@ -439,20 +378,14 @@ const fetchTickets = async (page = 1) => {
         : [];
 
     tickets.value = items;
-    currentPage.value = data.page || page || 1;
+    currentPage.value = data.page || page;
     totalPages.value =
       data.totalPages ||
-      Math.max(1, Math.ceil((data.total || items.length || 0) / pageSize));
-    total.value =
-      data.total != null
-        ? data.total
-        : items.length;
+      Math.max(1, Math.ceil((data.total || items.length) / pageSize));
+    total.value = data.total != null ? data.total : items.length;
 
-    // Bersihkan selection untuk tiket yang sudah tidak ada
-    const validKeys = new Set(items.map(ticketKey));
-    selectedKeys.value = selectedKeys.value.filter((k) =>
-      validKeys.has(k)
-    );
+    // reset centang setiap kali data berubah
+    selectedTickets.value = {};
   } catch (e) {
     error.value = e.message || 'Failed to fetch';
   } finally {
@@ -460,10 +393,10 @@ const fetchTickets = async (page = 1) => {
   }
 };
 
-/* Data yang ditampilkan = hasil dari API (sudah per-page / per-filter) */
+/* Data yang ditampilkan = tickets dari server */
 const pagedTickets = computed(() => tickets.value);
 
-/* Next/Prev panggil server lagi */
+/* Next/Prev mengikuti filter aktif */
 const nextPage = () => {
   if (currentPage.value < totalPages.value && !loading.value) {
     fetchTickets(currentPage.value + 1);
@@ -476,32 +409,27 @@ const prevPage = () => {
   }
 };
 
-/* Cari Nama */
+/* ====== Cari Nama ====== */
+
 const toggleNameSearch = () => {
   showNameInput.value = !showNameInput.value;
+
   if (!showNameInput.value) {
-    // jika ditutup, tidak langsung reset filter; biar badge tetap
-    nameInput.value = activeNameFilter.value;
+    // tutup → reset nama & reload normal
+    searchName.value = '';
+    currentFilters.value.name = '';
+    fetchTickets(1);
   }
 };
 
 const applyNameSearch = () => {
-  activeNameFilter.value = nameInput.value.trim();
-  currentPage.value = 1;
+  currentFilters.value.name = searchName.value.trim();
   fetchTickets(1);
 };
 
-const clearNameSearch = () => {
-  nameInput.value = '';
-  activeNameFilter.value = '';
-  currentPage.value = 1;
-  fetchTickets(1);
-};
+/* ====== Rentang Tanggal ====== */
 
-/* Rentang tanggal (modal) */
 const openDateModal = () => {
-  tempStartDate.value = activeStartDate.value;
-  tempEndDate.value = activeEndDate.value;
   showDateModal.value = true;
 };
 
@@ -510,67 +438,98 @@ const closeDateModal = () => {
 };
 
 const applyDateRange = () => {
-  activeStartDate.value = tempStartDate.value || '';
-  activeEndDate.value = tempEndDate.value || '';
-  currentPage.value = 1;
-  fetchTickets(1);
+  currentFilters.value.startDate = rangeStart.value || '';
+  currentFilters.value.endDate = rangeEnd.value || '';
   showDateModal.value = false;
+  fetchTickets(1);
 };
 
-const clearDateRange = () => {
-  tempStartDate.value = '';
-  tempEndDate.value = '';
-  activeStartDate.value = '';
-  activeEndDate.value = '';
-  currentPage.value = 1;
-  fetchTickets(1);
+/* ====== Refresh: reset semua filter ====== */
+
+const resetFiltersAndReload = () => {
+  currentFilters.value = {
+    startDate: '',
+    endDate: '',
+    name: ''
+  };
+  searchName.value = '';
+  rangeStart.value = '';
+  rangeEnd.value = '';
+  showNameInput.value = false;
   showDateModal.value = false;
+  fetchTickets(1);
 };
 
-/* Logout */
-const handleLogout = () => {
-  clearAuth();
+/* ====== Logout ====== */
+
+const logout = () => {
+  try {
+    clearAuth && clearAuth();
+  } catch (e) {
+    // ignore
+  }
   router.push({ name: 'Login' });
 };
 
-/* Helper key tiket */
-const ticketKey = (t) =>
+/* ====== Checkbox & Total Harga Tercentang ====== */
+
+const rowKey = (t) =>
   t.id ||
   t.pnr ||
   t.booking_no ||
-  `${t.operator || ''}-${t.origin || ''}-${t.destination || ''}-${t.date || ''}-${t.time || ''}`;
+  `${t.pnr || ''}-${t.date || ''}-${t.time || ''}`;
 
-/* Total harga terpilih */
-const selectedTotal = computed(() => {
-  if (!selectedKeys.value.length) return 0;
+const getNumericPrice = (t) => {
+  const raw = t.price != null && t.price !== ''
+    ? t.price
+    : t.total_price;
+  if (raw == null || raw === '') return 0;
 
-  const keySet = new Set(selectedKeys.value);
-  let sum = 0;
+  const n = Number(
+    typeof raw === 'string'
+      ? raw.replace(/[^\d.-]/g, '')
+      : raw
+  );
+  return isNaN(n) ? 0 : n;
+};
 
-  tickets.value.forEach((t) => {
-    const key = ticketKey(t);
-    if (!keySet.has(key)) return;
+const isSelected = (t) => {
+  const key = rowKey(t);
+  return !!selectedTickets.value[key];
+};
 
-    const raw = t.price != null && t.price !== ''
-      ? t.price
-      : t.total_price;
+const toggleSelected = (t, event) => {
+  const checked = event.target.checked;
+  const key = rowKey(t);
+  const copy = { ...selectedTickets.value };
 
-    if (raw == null || raw === '') return;
+  if (checked) {
+    copy[key] = getNumericPrice(t);
+  } else {
+    delete copy[key];
+  }
 
-    const n = Number(
-      typeof raw === 'string'
-        ? raw.replace(/[^\d.-]/g, '')
-        : raw
-    );
-    if (!isNaN(n)) {
-      sum += n;
-    }
+  selectedTickets.value = copy;
+};
+
+const selectedTotal = computed(() =>
+  Object.values(selectedTickets.value).reduce(
+    (sum, v) => sum + (v || 0),
+    0
+  )
+);
+
+const formattedSelectedTotal = computed(() => {
+  if (!selectedTotal.value) return '-';
+  return selectedTotal.value.toLocaleString('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0
   });
-
-  return sum;
 });
 
-/* Bersihkan passenger */
+/* ====== Helper display ====== */
+
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
@@ -629,6 +588,7 @@ const formatPrice = (price) => {
   });
 };
 
+/* Initial load: 10 tiket pertama (page=1, tanpa filter) */
 onMounted(() => fetchTickets(1));
 </script>
 
@@ -636,7 +596,7 @@ onMounted(() => fetchTickets(1));
 .ticket-table {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
   min-height: 0;
 }
@@ -645,8 +605,8 @@ onMounted(() => fetchTickets(1));
 .card-head {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  align-items: flex-end;
+  gap: 14px;
+  align-items: flex-start;
   flex-wrap: wrap;
 }
 
@@ -662,27 +622,24 @@ onMounted(() => fetchTickets(1));
   color: #0f172a;
 }
 
-.count-under {
-  font-size: 11px;
-  color: #1d4ed8;
-  background: #eff6ff;
-  display: inline-flex;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid #bfdbfe;
+.total-label {
+  font-size: 12px;
+  color: #2563eb;
+  font-weight: 500;
 }
 
 /* Actions */
 .actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 11px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .btn {
-  padding: 6px 10px;
+  padding: 6px 12px;
   font-size: 11px;
   border-radius: 999px;
   border: none;
@@ -691,21 +648,26 @@ onMounted(() => fetchTickets(1));
   color: #ffffff;
   font-weight: 500;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
-  transition: background 0.15s ease, transform 0.05s ease,
-    box-shadow 0.1s ease;
+  transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.1s ease;
   white-space: nowrap;
 }
 
 .btn.small {
-  padding: 5px 9px;
+  padding: 4px 9px;
   font-size: 10px;
+  box-shadow: none;
+}
+
+.btn.logout {
+  background: #ef4444;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
 }
 
 .btn.ghost {
   background: #ffffff;
-  color: #2563eb;
+  color: #374151;
+  border: 1px solid #e5e7eb;
   box-shadow: none;
-  border: 1px solid #bfdbfe;
 }
 
 .btn:hover:not(:disabled) {
@@ -713,8 +675,12 @@ onMounted(() => fetchTickets(1));
   transform: translateY(-1px);
 }
 
+.btn.logout:hover:not(:disabled) {
+  background: #dc2626;
+}
+
 .btn.ghost:hover:not(:disabled) {
-  background: #eff6ff;
+  background: #f3f4ff;
 }
 
 .btn:disabled {
@@ -723,65 +689,40 @@ onMounted(() => fetchTickets(1));
   box-shadow: none;
 }
 
-.logout-btn {
-  background: #ef4444;
-  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
-}
-
-.logout-btn:hover:not(:disabled) {
-  background: #dc2626;
-}
-
-/* Search nama row */
-.search-name-row {
+/* Cari nama inline */
+.search-group {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: -2px;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.search-name-row input {
-  flex: 1;
-  padding: 6px 8px;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
-  font-size: 11px;
+.search-inline {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.search-inline input {
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 10px;
+  min-width: 120px;
   outline: none;
 }
 
-.search-name-row input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.12);
+.search-inline input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
-/* Filter badges */
-.filter-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  font-size: 9px;
-  color: #1f2937;
-  margin-top: 2px;
-  margin-right: 4px;
-}
-
-.link-clear {
-  border: none;
-  background: transparent;
-  color: #6b7280;
-  font-size: 9px;
-  cursor: pointer;
-  padding: 0 2px;
-}
-
-/* Total terpilih */
-.selected-total {
-  margin-top: 2px;
+/* Selected total summary */
+.selected-summary {
   font-size: 10px;
+  color: #4b5563;
+}
+
+.selected-summary strong {
   color: #111827;
 }
 
@@ -818,15 +759,6 @@ th {
   font-size: 10px;
   letter-spacing: 0.06em;
   color: #1f2937;
-}
-
-.check-col {
-  width: 32px;
-  text-align: center;
-}
-
-.check-col input {
-  cursor: pointer;
 }
 
 .pnr {
@@ -867,6 +799,19 @@ th {
   color: #111827;
 }
 
+/* Checkbox + harga */
+.price-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-check input[type='checkbox'] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
 /* Links & status */
 .link {
   color: #2563eb;
@@ -892,7 +837,7 @@ th {
   color: #9ca3af;
 }
 
-/* Mobile */
+/* Mobile list */
 .mobile-list {
   display: none;
   flex: 1;
@@ -916,10 +861,6 @@ th {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.check-row {
-  align-items: flex-start;
 }
 
 .label {
@@ -975,52 +916,59 @@ th {
   color: #6b7280;
 }
 
-/* Modal */
-.modal-backdrop {
+/* Modal rentang tanggal */
+.modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(15, 23, 42, 0.35);
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 40;
+  align-items: center;
+  z-index: 50;
 }
 
 .modal {
+  background: #ffffff;
+  padding: 14px 16px 12px;
+  border-radius: 14px;
   width: 100%;
   max-width: 320px;
-  background: #f9fafb;
-  border-radius: 16px;
-  padding: 14px 14px 10px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 11px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+  font-size: 12px;
   color: #111827;
 }
 
 .modal h3 {
-  margin: 0 0 4px;
-  font-size: 13px;
+  margin: 0 0 8px;
+  font-size: 14px;
   font-weight: 600;
+  color: #111827;
 }
 
 .modal label {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #4b5563;
 }
 
-.modal input[type="date"] {
+.modal input[type='date'] {
   padding: 6px 8px;
-  border-radius: 9px;
-  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
   font-size: 11px;
+  outline: none;
+}
+
+.modal input[type='date']:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
 .modal-actions {
-  margin-top: 4px;
+  margin-top: 10px;
   display: flex;
   justify-content: flex-end;
   gap: 6px;
@@ -1030,7 +978,6 @@ th {
 @media (max-width: 767px) {
   .card-head {
     gap: 6px;
-    align-items: flex-start;
   }
 
   .title {
