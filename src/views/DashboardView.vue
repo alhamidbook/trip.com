@@ -4,7 +4,7 @@
       <!-- HEADER DALAM CARD -->
       <div class="card-head">
         <div>
-          <div class="title">Tiket Issued Trip.com</div>
+          <div class="title">Tiket Travel Al-Hamid - Trip.com</div>
           <div class="total-label">
             Total: {{ total }}
             <span v-if="isFilterMode" class="badge-filter">
@@ -87,7 +87,7 @@
           <thead>
             <tr>
               <th>Pilih</th>
-              <th>Nomor Pemesanan / PNR</th>
+              <th>Nomor Pemesanan</th>
               <th>Penumpang &amp; Rute</th>
               <th>Download PDF Ticket</th>
               <th>Total Harga</th>
