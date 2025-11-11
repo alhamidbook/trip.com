@@ -2,12 +2,12 @@
   <div class="card">
     <div class="card-head">
       <div>
-        <div class="title">Tiket Issued Trip.com</div>
+        <div class="title">Tiket Trip.com (Pembayaran & Issued)</div>
         <div class="subtitle">
-          Data otomatis dari email Trip.com:
+          Data otomatis dari email
           <strong>"Fwd: Pembayaran Berhasil"</strong>
-          &amp;
-          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
+          dan
+          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>.
         </div>
       </div>
 
@@ -38,25 +38,19 @@
           <tr v-for="t in tickets" :key="t.id || t.pnr">
             <!-- PNR / Booking No -->
             <td class="pnr">
-              {{ t.pnr || t.booking_no || '-' }}
+              {{ t.pnr || t.bookingNo || t.booking_no || '-' }}
             </td>
 
-            <!-- Penumpang + Info Penerbangan -->
+            <!-- Penumpang + Flight info -->
             <td class="flight-info">
               <div class="line-main">
-                <span
-                  v-if="t.passenger"
-                  class="passenger"
-                >
+                <span v-if="t.passenger" class="passenger">
                   {{ t.passenger }}
                 </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
-                <span
-                  class="airline"
-                  v-if="airline(t)"
-                >
+                <span class="airline" v-if="airline(t)">
                   • {{ airline(t) }}
                 </span>
               </div>
@@ -68,7 +62,7 @@
               </div>
             </td>
 
-            <!-- PDF (hanya jika sudah ada dari email Konfirmasi) -->
+            <!-- PDF: hanya jika pdf_url sudah ada -->
             <td>
               <a
                 v-if="t.pdf_url"
@@ -82,9 +76,9 @@
               <span v-else>-</span>
             </td>
 
-            <!-- Total Harga (dari email Pembayaran Berhasil → kolom Total) -->
+            <!-- Harga -->
             <td class="price">
-              {{ formatPrice(t.price || t.total_price) }}
+              {{ formatPrice(t.price || t.total_price || t.totalPaid) }}
             </td>
           </tr>
         </tbody>
@@ -93,10 +87,7 @@
 
     <!-- MOBILE LIST -->
     <div class="mobile-list">
-      <div
-        v-if="!loading && tickets.length === 0"
-        class="empty"
-      >
+      <div v-if="!loading && tickets.length === 0" class="empty">
         Belum ada data tiket.
       </div>
 
@@ -108,14 +99,11 @@
         <div class="row">
           <div class="label">Nomor Pemesanan / PNR</div>
           <div class="value strong">
-            {{ t.pnr || t.booking_no || '-' }}
+            {{ t.pnr || t.bookingNo || t.booking_no || '-' }}
           </div>
         </div>
 
-        <div
-          class="row"
-          v-if="t.passenger"
-        >
+        <div class="row" v-if="t.passenger">
           <div class="label">Penumpang</div>
           <div class="value">
             {{ t.passenger }}
@@ -123,7 +111,7 @@
         </div>
 
         <div class="row">
-          <div class="label">Tanggal &amp; Rute</div>
+          <div class="label">Tanggal & Rute</div>
           <div class="value">
             <div>
               {{ depDate(t) || '-' }}
@@ -157,18 +145,13 @@
         <div class="row">
           <div class="label">Total Harga</div>
           <div class="value strong">
-            {{ formatPrice(t.price || t.total_price) }}
+            {{ formatPrice(t.price || t.total_price || t.totalPaid) }}
           </div>
         </div>
       </div>
     </div>
 
-    <p
-      v-if="error"
-      class="error"
-    >
-      {{ error }}
-    </p>
+    <p v-if="error" class="error">{{ error }}</p>
   </div>
 </template>
 
@@ -187,7 +170,7 @@ const fetchTickets = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const res = await fetch(API_URL);
+    const res = await fetch(API_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('Gagal mengambil data tiket');
     const data = await res.json();
     tickets.value = Array.isArray(data) ? data : [];
@@ -198,23 +181,14 @@ const fetchTickets = async () => {
   }
 };
 
-// Helpers sesuai struktur DB Worker
-const depDate = (t) =>
-  t.date || t.departure_date || t.flight_date || '';
-
-const depTime = (t) =>
-  t.time || t.departure_time || '';
-
-const airline = (t) =>
-  t.operator || t.airline || '';
+// Helpers sesuai struktur dari Worker
+const depDate = (t) => t.date || t.departure_date || t.flight_date || '';
+const depTime = (t) => t.time || t.departure_time || '';
+const airline = (t) => t.operator || t.airline || '';
 
 const formatPrice = (price) => {
-  if (price == null || price === '') return '-';
-  const n = Number(
-    typeof price === 'string'
-      ? price.replace(/[^\d.-]/g, '')
-      : price
-  );
+  if (price == null || price === '' || Number(price) === 0) return '-';
+  const n = Number(price);
   if (isNaN(n)) return price;
   return n.toLocaleString('id-ID', {
     style: 'currency',
