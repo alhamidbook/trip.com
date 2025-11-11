@@ -197,14 +197,14 @@ const fetchTickets = async () => {
   }
 };
 
-// Passenger cleaning: buang teks status seperti
-// "Kami akan segera menerbitkan tiket Anda", "Tiket akan diterbitkan...", dsb.
+// Bersihkan field passenger dari teks status marketing
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
   raw = String(raw);
 
+  // Pola "XXX (Nama depan) YYY (Nama belakang)"
   const paxMatch = raw.match(
     /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
   );
@@ -214,12 +214,14 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
+  // Buang kalimat status/promo
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
     .replace(/^icon\b.*$/gim, '');
 
+  // Buang baris rute kalau nyampur di passenger
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
     ''
@@ -264,34 +266,37 @@ onMounted(fetchTickets);
 </script>
 
 <style scoped>
+/* Container utama kartu */
 .card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 14px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
-  color: #111827;
+  background: #f5f7fb; /* terang lembut */
+  border-radius: 18px;
+  padding: 18px 18px 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.14);
+  color: #0f172a;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* Header */
 .card-head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #0f172a;
 }
 
 .subtitle {
-  font-size: 11px;
+  font-size: 13px;
   color: #6b7280;
+  margin-top: 2px;
 }
 
 .subtitle strong {
@@ -299,36 +304,39 @@ onMounted(fetchTickets);
   font-weight: 600;
 }
 
+/* Actions */
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 10px;
+  font-size: 12px;
 }
 
 .count {
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 999px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
+  font-weight: 500;
 }
 
 .actions button {
-  padding: 5px 12px;
-  font-size: 11px;
+  padding: 6px 14px;
+  font-size: 12px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
-  background: #2563eb;
+  background: #3b82f6; /* biru soft */
   color: #ffffff;
+  font-weight: 500;
   transition: background 0.15s ease, transform 0.05s ease,
     box-shadow 0.1s ease;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 .actions button:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #2563eb;
   transform: translateY(-1px);
 }
 
@@ -338,24 +346,25 @@ onMounted(fetchTickets);
   box-shadow: none;
 }
 
-/* TABLE */
+/* TABLE WRAPPER */
 .table-wrap {
   max-height: 70vh;
   overflow-y: auto;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  background: #ffffff;
 }
 
+/* Table */
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 th,
 td {
-  padding: 7px 8px;
+  padding: 8px 10px;
   border-bottom: 1px solid #e5e7eb;
   text-align: left;
 }
@@ -367,7 +376,7 @@ th {
   z-index: 1;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.06em;
   color: #1f2937;
 }
@@ -378,10 +387,10 @@ th {
 }
 
 .flight-info .line-main {
-  font-size: 10px;
+  font-size: 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 6px;
   align-items: baseline;
 }
 
@@ -401,7 +410,7 @@ th {
 }
 
 .flight-info .line-sub {
-  font-size: 9px;
+  font-size: 11px;
   color: #6b7280;
 }
 
@@ -410,9 +419,10 @@ th {
   color: #111827;
 }
 
+/* Links & status */
 .link {
   color: #2563eb;
-  font-size: 9px;
+  font-size: 11px;
   text-decoration: none;
   font-weight: 500;
 }
@@ -422,33 +432,33 @@ th {
 }
 
 .pending {
-  font-size: 9px;
+  font-size: 11px;
   color: #9ca3af;
   font-style: italic;
 }
 
 .empty {
   text-align: center;
-  padding: 10px 4px;
-  font-size: 10px;
+  padding: 12px 4px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
-/* MOBILE */
+/* MOBILE LIST */
 .mobile-list {
   display: none;
 }
 
 .ticket-card {
-  padding: 9px 9px 8px;
-  margin-bottom: 8px;
-  border-radius: 12px;
+  padding: 10px 10px 8px;
+  margin-bottom: 10px;
+  border-radius: 14px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 6px 16px rgba(148, 163, 253, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .row {
@@ -458,14 +468,14 @@ th {
 }
 
 .label {
-  font-size: 8px;
+  font-size: 9px;
   color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .value {
-  font-size: 10px;
+  font-size: 12px;
   color: #111827;
 }
 
@@ -474,13 +484,14 @@ th {
 }
 
 .sub {
-  font-size: 9px;
+  font-size: 11px;
   color: #6b7280;
 }
 
+/* Error */
 .error {
-  margin-top: 6px;
-  font-size: 10px;
+  margin-top: 8px;
+  font-size: 11px;
   color: #dc2626;
 }
 
