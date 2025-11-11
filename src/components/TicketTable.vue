@@ -1,154 +1,80 @@
 <template>
-  <div class="page">
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <div class="title">Tiket Issued Trip.com</div>
-          <div class="subtitle">
-            Data otomatis dari email Trip.com:
-            <strong>"Fwd: Pembayaran Berhasil"</strong>
-            &amp;
-            <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
-          </div>
-        </div>
-
-        <div class="actions">
-          <span class="count">Total: {{ tickets.length }}</span>
-          <button @click="fetchTickets" :disabled="loading">
-            {{ loading ? 'Refresh...' : 'Refresh' }}
-          </button>
+  <div class="ticket-table">
+    <!-- Header list di dalam card (bukan page baru) -->
+    <div class="card-head">
+      <div>
+        <div class="title">Tiket Issued Trip.com</div>
+        <div class="subtitle">
+          Data otomatis dari email Trip.com:
+          <strong>"Fwd: Pembayaran Berhasil"</strong>
+          &amp;
+          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
         </div>
       </div>
 
-      <!-- DESKTOP TABLE (scroll hanya di area ini) -->
-      <div class="table-wrap desktop-only">
-        <table>
-          <thead>
-            <tr>
-              <th>Nomor Pemesanan / PNR</th>
-              <th>Penumpang &amp; Rute</th>
-              <th>Download PDF Ticket</th>
-              <th>Total Harga</th>
-            </tr>
-          </thead>
-          <tbody>
-            <td
-              v-if="!loading && pagedTickets.length === 0"
-              colspan="4"
-              class="empty"
-            >
+      <div class="actions">
+        <span class="count">Total: {{ tickets.length }}</span>
+        <button @click="fetchTickets" :disabled="loading">
+          {{ loading ? 'Refresh...' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- DESKTOP TABLE (scroll area) -->
+    <div class="table-wrap desktop-only">
+      <table>
+        <thead>
+          <tr>
+            <th>Nomor Pemesanan / PNR</th>
+            <th>Penumpang &amp; Rute</th>
+            <th>Download PDF Ticket</th>
+            <th>Total Harga</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-if="!loading && pagedTickets.length === 0"
+          >
+            <td colspan="4" class="empty">
               Belum ada data tiket.
             </td>
+          </tr>
 
-            <tr
-              v-for="t in pagedTickets"
-              :key="t.id || t.pnr"
-            >
-              <!-- PNR / Booking No -->
-              <td class="pnr">
-                {{ t.pnr || t.booking_no || '-' }}
-              </td>
-
-              <!-- Penumpang + Info Penerbangan -->
-              <td class="flight-info">
-                <div class="line-main">
-                  <span
-                    v-if="safePassenger(t)"
-                    class="passenger"
-                  >
-                    {{ safePassenger(t) }}
-                  </span>
-                  <span class="date">
-                    {{ depDate(t) || '-' }}
-                  </span>
-                  <span
-                    class="airline"
-                    v-if="airline(t)"
-                  >
-                    • {{ airline(t) }}
-                  </span>
-                </div>
-                <div class="line-sub">
-                  <span v-if="depTime(t)">{{ depTime(t) }}</span>
-                  <span v-if="t.origin && t.destination">
-                    &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
-                  </span>
-                </div>
-              </td>
-
-              <!-- PDF -->
-              <td>
-                <a
-                  v-if="t.pdf_url"
-                  :href="t.pdf_url"
-                  target="_blank"
-                  rel="noopener"
-                  class="link"
-                >
-                  Download
-                </a>
-                <span v-else class="pending">Akan segera terbit</span>
-              </td>
-
-              <!-- Total Harga -->
-              <td class="price">
-                {{ formatPrice(t.price || t.total_price) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- MOBILE LIST (scroll hanya di area ini) -->
-      <div class="mobile-list">
-        <div
-          v-if="!loading && pagedTickets.length === 0"
-          class="empty"
-        >
-          Belum ada data tiket.
-        </div>
-
-        <div
-          v-for="t in pagedTickets"
-          :key="t.id || t.pnr"
-          class="ticket-card"
-        >
-          <div class="row">
-            <div class="label">Nomor Pemesanan / PNR</div>
-            <div class="value strong">
-              {{ t.pnr || t.booking_no || '-' }}
-            </div>
-          </div>
-
-          <div
-            class="row"
-            v-if="safePassenger(t)"
+          <tr
+            v-for="t in pagedTickets"
+            :key="t.id || t.pnr"
           >
-            <div class="label">Penumpang</div>
-            <div class="value">
-              {{ safePassenger(t) }}
-            </div>
-          </div>
+            <td class="pnr">
+              {{ t.pnr || t.booking_no || '-' }}
+            </td>
 
-          <div class="row">
-            <div class="label">Tanggal &amp; Rute</div>
-            <div class="value">
-              <div>
-                {{ depDate(t) || '-' }}
-                <span v-if="airline(t)"> • {{ airline(t) }}</span>
+            <td class="flight-info">
+              <div class="line-main">
+                <span
+                  v-if="safePassenger(t)"
+                  class="passenger"
+                >
+                  {{ safePassenger(t) }}
+                </span>
+                <span class="date">
+                  {{ depDate(t) || '-' }}
+                </span>
+                <span
+                  class="airline"
+                  v-if="airline(t)"
+                >
+                  • {{ airline(t) }}
+                </span>
               </div>
-              <div class="sub">
+              <div class="line-sub">
                 <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span v-if="t.origin && t.destination">
                   &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
                 </span>
               </div>
-            </div>
-          </div>
+            </td>
 
-          <div class="row">
-            <div class="label">PDF Ticket</div>
-            <div class="value">
+            <td>
               <a
                 v-if="t.pdf_url"
                 :href="t.pdf_url"
@@ -159,49 +85,118 @@
                 Download
               </a>
               <span v-else class="pending">Akan segera terbit</span>
-            </div>
-          </div>
+            </td>
 
-          <div class="row">
-            <div class="label">Total Harga</div>
-            <div class="value strong">
+            <td class="price">
               {{ formatPrice(t.price || t.total_price) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- MOBILE LIST (scroll area) -->
+    <div class="mobile-list">
+      <div
+        v-if="!loading && pagedTickets.length === 0"
+        class="empty"
+      >
+        Belum ada data tiket.
+      </div>
+
+      <div
+        v-for="t in pagedTickets"
+        :key="t.id || t.pnr"
+        class="ticket-card"
+      >
+        <div class="row">
+          <div class="label">Nomor Pemesanan / PNR</div>
+          <div class="value strong">
+            {{ t.pnr || t.booking_no || '-' }}
+          </div>
+        </div>
+
+        <div
+          class="row"
+          v-if="safePassenger(t)"
+        >
+          <div class="label">Penumpang</div>
+          <div class="value">
+            {{ safePassenger(t) }}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="label">Tanggal &amp; Rute</div>
+          <div class="value">
+            <div>
+              {{ depDate(t) || '-' }}
+              <span v-if="airline(t)"> • {{ airline(t) }}</span>
+            </div>
+            <div class="sub">
+              <span v-if="depTime(t)">{{ depTime(t) }}</span>
+              <span v-if="t.origin && t.destination">
+                &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
+              </span>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- PAGINATION -->
-      <div
-        v-if="totalPages > 1"
-        class="pagination"
-      >
-        <button
-          class="nav-btn"
-          @click="prevPage"
-          :disabled="currentPage === 1"
-        >
-          ← Prev
-        </button>
-        <span class="page-info">
-          Page {{ currentPage }} / {{ totalPages }}
-        </span>
-        <button
-          class="nav-btn"
-          @click="nextPage"
-          :disabled="currentPage === totalPages"
-        >
-          Next →
-        </button>
-      </div>
+        <div class="row">
+          <div class="label">PDF Ticket</div>
+          <div class="value">
+            <a
+              v-if="t.pdf_url"
+              :href="t.pdf_url"
+              target="_blank"
+              rel="noopener"
+              class="link"
+            >
+              Download
+            </a>
+            <span v-else class="pending">Akan segera terbit</span>
+          </div>
+        </div>
 
-      <p
-        v-if="error"
-        class="error"
-      >
-        {{ error }}
-      </p>
+        <div class="row">
+          <div class="label">Total Harga</div>
+          <div class="value strong">
+            {{ formatPrice(t.price || t.total_price) }}
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- PAGINATION -->
+    <div
+      v-if="totalPages > 1"
+      class="pagination"
+    >
+      <button
+        class="nav-btn"
+        @click="prevPage"
+        :disabled="currentPage === 1"
+      >
+        ← Prev
+      </button>
+      <span class="page-info">
+        Page {{ currentPage }} / {{ totalPages }}
+      </span>
+      <button
+        class="nav-btn"
+        @click="nextPage"
+        :disabled="currentPage === totalPages"
+      >
+        Next →
+      </button>
+    </div>
+
+    <p
+      v-if="error"
+      class="error"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 
@@ -218,15 +213,11 @@ const error = ref('');
 const currentPage = ref(1);
 const pageSize = 10;
 
-/**
- * Parse tanggal & jam berangkat jadi objek Date.
- */
 const getDepartureDateTime = (t) => {
   const dateStr = t.date || t.departure_date || t.flight_date || '';
   const timeStr = t.time || t.departure_time || '';
 
   if (!dateStr) return null;
-
   const trimmed = String(dateStr).trim();
 
   const monthMap = {
@@ -253,7 +244,6 @@ const getDepartureDateTime = (t) => {
     august: 7,
     september: 8,
     october: 9,
-    november_en: 10,
     december: 11
   };
 
@@ -261,21 +251,19 @@ const getDepartureDateTime = (t) => {
   if (m) {
     const day = parseInt(m[1], 10);
     const monNameRaw = m[2].toLowerCase();
-    const monName =
-      monNameRaw === 'november' ? 'november' : monNameRaw;
     const year = parseInt(m[3], 10);
     const month =
-      monthMap[monName] !== undefined
-        ? monthMap[monName]
-        : new Date(`${monName} 1, 2000`).getMonth();
+      monthMap[monNameRaw] !== undefined
+        ? monthMap[monNameRaw]
+        : new Date(`${monNameRaw} 1, 2000`).getMonth();
 
     if (!isNaN(day) && !isNaN(year) && month >= 0 && month <= 11) {
       let hh = 0;
       let mm = 0;
       if (timeStr && /^\d{2}:\d{2}$/.test(timeStr)) {
-        const parts = timeStr.split(':');
-        hh = parseInt(parts[0], 10) || 0;
-        mm = parseInt(parts[1], 10) || 0;
+        const [h, mi] = timeStr.split(':');
+        hh = parseInt(h, 10) || 0;
+        mm = parseInt(mi, 10) || 0;
       }
       const dt = new Date(year, month, day, hh, mm, 0);
       if (!isNaN(dt.getTime())) return dt;
@@ -319,9 +307,7 @@ const fetchTickets = async () => {
         const aPast = ad < today;
         const bPast = bd < today;
 
-        if (aPast !== bPast) {
-          return aPast ? 1 : -1;
-        }
+        if (aPast !== bPast) return aPast ? 1 : -1;
 
         return ad - bd;
       });
@@ -334,7 +320,6 @@ const fetchTickets = async () => {
   }
 };
 
-/* Pagination computed */
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(tickets.value.length / pageSize))
 );
@@ -345,18 +330,13 @@ const pagedTickets = computed(() => {
 });
 
 const nextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value += 1;
-  }
+  if (currentPage.value < totalPages.value) currentPage.value += 1;
 };
 
 const prevPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value -= 1;
-  }
+  if (currentPage.value > 1) currentPage.value -= 1;
 };
 
-/* Bersihkan field passenger dari teks status marketing */
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
@@ -376,22 +356,19 @@ const safePassenger = (t) => {
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
-    .replace(/^icon\b.*$/gim, '');
+    .replace(/^icon\b.*$/gim, '')
+    .replace(
+      /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
+      ''
+    );
 
-  raw = raw.replace(
-    /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
-    ''
-  );
-
-  const cleaned = raw
+  return raw
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0)
+    .filter((l) => l)
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
-
-  return cleaned;
 };
 
 const depDate = (t) =>
@@ -422,41 +399,15 @@ onMounted(fetchTickets);
 </script>
 
 <style scoped>
-.page {
-  height: 100vh;
-  padding: 18px;
-  box-sizing: border-box;
-  background: linear-gradient(
-    135deg,
-    #0052ff 0%,
-    #1da0ff 35%,
-    #4fd5ff 65%,
-    #ff6ad5 100%
-  );
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-}
-
-/* Card utama */
-.card {
-  width: 100%;
-  max-width: 1320px;
-  margin: 0 auto;
-  background: #f5f7fb;
-  border-radius: 18px;
-  padding: 18px 18px 10px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.18);
-  color: #0f172a;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+.ticket-table {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
+  gap: 8px;
+  flex: 1;
+  min-height: 0; /* penting supaya area scroll bekerja dalam card */
 }
 
-/* Header */
+/* Header di dalam card */
 .card-head {
   display: flex;
   justify-content: space-between;
@@ -466,13 +417,13 @@ onMounted(fetchTickets);
 }
 
 .title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #0f172a;
 }
 
 .subtitle {
-  font-size: 13px;
+  font-size: 12px;
   color: #6b7280;
   margin-top: 2px;
 }
@@ -486,12 +437,12 @@ onMounted(fetchTickets);
 .actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 11px;
 }
 
 .count {
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -500,17 +451,17 @@ onMounted(fetchTickets);
 }
 
 .actions button {
-  padding: 6px 14px;
-  font-size: 12px;
+  padding: 6px 12px;
+  font-size: 11px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
   background: #3b82f6;
   color: #ffffff;
   font-weight: 500;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
   transition: background 0.15s ease, transform 0.05s ease,
     box-shadow 0.1s ease;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 .actions button:hover:not(:disabled) {
@@ -524,7 +475,7 @@ onMounted(fetchTickets);
   box-shadow: none;
 }
 
-/* DESKTOP TABLE */
+/* Desktop table area (scroll) */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -622,7 +573,7 @@ th {
   color: #9ca3af;
 }
 
-/* MOBILE LIST */
+/* Mobile list */
 .mobile-list {
   display: none;
   flex: 1;
@@ -671,7 +622,7 @@ th {
 
 /* Pagination */
 .pagination {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -710,12 +661,16 @@ th {
 
 /* Responsive */
 @media (max-width: 767px) {
-  .page {
-    padding: 10px;
+  .card-head {
+    gap: 8px;
   }
 
-  .card {
-    padding: 12px 10px 8px;
+  .title {
+    font-size: 15px;
+  }
+
+  .subtitle {
+    font-size: 10px;
   }
 
   .desktop-only {
