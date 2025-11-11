@@ -60,7 +60,19 @@
                   • {{ airline(t) }}
                 </span>
               </div>
-              <div class="line-sub">
+
+              <!-- Jika punya banyak leg, tampilkan semuanya -->
+              <div class="line-sub" v-if="legs(t).length">
+                <div v-for="(leg, idx) in legs(t)" :key="idx">
+                  <span v-if="leg.time">{{ leg.time }}</span>
+                  <span v-if="leg.origin && leg.destination">
+                    &nbsp;| {{ leg.origin }} ➜ {{ leg.destination }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Fallback lama (single) -->
+              <div class="line-sub" v-else>
                 <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span v-if="t.origin && t.destination">
                   &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
@@ -129,7 +141,19 @@
               {{ depDate(t) || '-' }}
               <span v-if="airline(t)"> • {{ airline(t) }}</span>
             </div>
-            <div class="sub">
+
+            <!-- Multi-leg di mobile -->
+            <div class="sub" v-if="legs(t).length">
+              <div v-for="(leg, idx) in legs(t)" :key="idx">
+                <span v-if="leg.time">{{ leg.time }}</span>
+                <span v-if="leg.origin && leg.destination">
+                  &nbsp;| {{ leg.origin }} ➜ {{ leg.destination }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Fallback single -->
+            <div class="sub" v-else>
               <span v-if="depTime(t)">{{ depTime(t) }}</span>
               <span v-if="t.origin && t.destination">
                 &nbsp;| {{ t.origin }} ➜ {{ t.destination }}
@@ -197,6 +221,29 @@ const fetchTickets = async () => {
   }
 };
 
+/** --- Tambahan: pembaca Legs dari extra atau t.legs --- */
+const legs = (t) => {
+  if (!t) return [];
+  if (Array.isArray(t.legs)) return t.legs;
+
+  const extra = t.extra || t.Extra || '';
+  if (typeof extra !== 'string') return [];
+  const at = extra.indexOf('Legs=');
+  if (at === -1) return [];
+  try {
+    const json = extra.slice(at + 5).trim();
+    const arr = JSON.parse(json);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+};
+
+const mainLeg = (t) => {
+  const l = legs(t);
+  return l && l.length ? l[0] : null;
+};
+
 // Bersihkan field passenger dari teks status marketing
 const safePassenger = (t) => {
   let raw = t.passenger || '';
@@ -238,14 +285,20 @@ const safePassenger = (t) => {
   return cleaned;
 };
 
-const depDate = (t) =>
-  t.date || t.departure_date || t.flight_date || '';
+const depDate = (t) => {
+  const ml = mainLeg(t);
+  return (ml && ml.date) || t.date || t.departure_date || t.flight_date || '';
+};
 
-const depTime = (t) =>
-  t.time || t.departure_time || '';
+const depTime = (t) => {
+  const ml = mainLeg(t);
+  return (ml && ml.time) || t.time || t.departure_time || '';
+};
 
-const airline = (t) =>
-  t.operator || t.airline || '';
+const airline = (t) => {
+  const ml = mainLeg(t);
+  return (ml && ml.airline) || t.operator || t.airline || '';
+};
 
 const formatPrice = (price) => {
   if (price == null || price === '') return '-';
