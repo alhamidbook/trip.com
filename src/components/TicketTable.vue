@@ -2,12 +2,12 @@
   <div class="card">
     <div class="card-head">
       <div>
-        <div class="title">Tiket Trip.com (Pembayaran & Issued)</div>
+        <div class="title">Tiket Issued Trip.com</div>
         <div class="subtitle">
-          Data otomatis dari email
+          Data otomatis dari email Trip.com:
           <strong>"Fwd: Pembayaran Berhasil"</strong>
-          dan
-          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>.
+          &
+          <strong>"Fwd: Konfirmasi Pemesanan Tiket Pesawat:"</strong>
         </div>
       </div>
 
@@ -38,10 +38,10 @@
           <tr v-for="t in tickets" :key="t.id || t.pnr">
             <!-- PNR / Booking No -->
             <td class="pnr">
-              {{ t.pnr || t.bookingNo || t.booking_no || '-' }}
+              {{ t.pnr || t.booking_no || '-' }}
             </td>
 
-            <!-- Penumpang + Flight info -->
+            <!-- Penumpang + Info Penerbangan -->
             <td class="flight-info">
               <div class="line-main">
                 <span v-if="t.passenger" class="passenger">
@@ -62,7 +62,7 @@
               </div>
             </td>
 
-            <!-- PDF: hanya jika pdf_url sudah ada -->
+            <!-- PDF (muncul hanya jika sudah ada dari Konfirmasi) -->
             <td>
               <a
                 v-if="t.pdf_url"
@@ -76,9 +76,9 @@
               <span v-else>-</span>
             </td>
 
-            <!-- Harga -->
+            <!-- Total Harga (pakai nilai yang sudah dihitung di Worker) -->
             <td class="price">
-              {{ formatPrice(t.price || t.total_price || t.totalPaid) }}
+              {{ formatPrice(t.price || t.total_price) }}
             </td>
           </tr>
         </tbody>
@@ -99,7 +99,7 @@
         <div class="row">
           <div class="label">Nomor Pemesanan / PNR</div>
           <div class="value strong">
-            {{ t.pnr || t.bookingNo || t.booking_no || '-' }}
+            {{ t.pnr || t.booking_no || '-' }}
           </div>
         </div>
 
@@ -111,7 +111,7 @@
         </div>
 
         <div class="row">
-          <div class="label">Tanggal & Rute</div>
+          <div class="label">Tanggal &amp; Rute</div>
           <div class="value">
             <div>
               {{ depDate(t) || '-' }}
@@ -145,20 +145,21 @@
         <div class="row">
           <div class="label">Total Harga</div>
           <div class="value strong">
-            {{ formatPrice(t.price || t.total_price || t.totalPaid) }}
+            {{ formatPrice(t.price || t.total_price) }}
           </div>
         </div>
       </div>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" class="error">
+      {{ error }}
+    </p>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 
-// Endpoint Worker API
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
 
@@ -181,15 +182,23 @@ const fetchTickets = async () => {
   }
 };
 
-// Helpers sesuai struktur dari Worker
-const depDate = (t) => t.date || t.departure_date || t.flight_date || '';
-const depTime = (t) => t.time || t.departure_time || '';
-const airline = (t) => t.operator || t.airline || '';
+const depDate = (t) =>
+  t.date || t.departure_date || t.flight_date || '';
+
+const depTime = (t) =>
+  t.time || t.departure_time || '';
+
+const airline = (t) =>
+  t.operator || t.airline || '';
 
 const formatPrice = (price) => {
-  if (price == null || price === '' || Number(price) === 0) return '-';
-  const n = Number(price);
-  if (isNaN(n)) return price;
+  if (price == null || price === '') return '-';
+  const n = Number(
+    typeof price === 'string'
+      ? price.replace(/[^\d.-]/g, '')
+      : price
+  );
+  if (isNaN(n) || n === 0) return '-';
   return n.toLocaleString('id-ID', {
     style: 'currency',
     currency: 'IDR',
