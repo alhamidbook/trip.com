@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <!-- DESKTOP TABLE -->
+      <!-- DESKTOP TABLE (scroll hanya di area ini) -->
       <div class="table-wrap desktop-only">
         <table>
           <thead>
@@ -92,7 +92,7 @@
         </table>
       </div>
 
-      <!-- MOBILE LIST -->
+      <!-- MOBILE LIST (scroll hanya di area ini) -->
       <div class="mobile-list">
         <div
           v-if="!loading && tickets.length === 0"
@@ -268,29 +268,39 @@ onMounted(fetchTickets);
 </script>
 
 <style scoped>
-/* Full-page background (biru soft gradient) */
+/* Halaman penuh dengan gradient biru lembut ala Trip.com */
 .page {
-  min-height: 100vh;
+  height: 100vh;
   padding: 18px;
   box-sizing: border-box;
-  background: radial-gradient(circle at top left, #e0f2fe 0%, #eff6ff 40%, #dbeafe 100%);
+  background: linear-gradient(
+    135deg,
+    #0052ff 0%,
+    #1da0ff 35%,
+    #4fd5ff 65%,
+    #ff6ad5 100%
+  );
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
-/* Container utama kartu */
+/* Card utama menempel di tengah, hanya isi list yang scroll */
 .card {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
   background: #f5f7fb;
   border-radius: 18px;
-  padding: 18px 18px 14px;
+  padding: 18px 18px 12px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.14);
+  box-shadow: 0 10px 30px rgba(148, 163, 253, 0.18);
   color: #0f172a;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden; /* penting: biar card tetap, isi yang scroll */
 }
 
 /* Header */
@@ -299,7 +309,6 @@ onMounted(fetchTickets);
   justify-content: space-between;
   gap: 14px;
   align-items: flex-start;
-  margin-bottom: 14px;
   flex-wrap: wrap;
 }
 
@@ -362,9 +371,10 @@ onMounted(fetchTickets);
   box-shadow: none;
 }
 
-/* TABLE WRAPPER */
+/* DESKTOP TABLE: flex-1 + scroll internal */
 .table-wrap {
-  max-height: 70vh;
+  flex: 1;
+  min-height: 0;              /* penting agar flex container bisa scroll */
   overflow-y: auto;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
@@ -460,9 +470,12 @@ th {
   color: #9ca3af;
 }
 
-/* MOBILE LIST */
+/* MOBILE LIST: hanya dipakai di mobile, juga scroll internal */
 .mobile-list {
   display: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .ticket-card {
@@ -506,7 +519,7 @@ th {
 
 /* Error */
 .error {
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 11px;
   color: #dc2626;
 }
@@ -516,13 +529,17 @@ th {
   .page {
     padding: 10px;
   }
+
+  .card {
+    padding: 12px 10px 8px;
+  }
+
   .desktop-only {
     display: none;
   }
+
   .mobile-list {
     display: block;
-    max-height: 70vh;
-    overflow-y: auto;
   }
 }
 
