@@ -275,6 +275,8 @@ const formatPrice = (price) => {
   });
 };
 
+/* PNR helpers */
+
 const extractRealPnr = (t) => {
   if (t.real_pnr) return String(t.real_pnr).trim();
   const extra = t.extra ? String(t.extra) : '';
@@ -283,6 +285,9 @@ const extractRealPnr = (t) => {
 };
 
 const extractBookingNo = (t) => {
+  const direct = t.booking_no ? String(t.booking_no).trim() : '';
+  if (direct && /^\d{8,}$/.test(direct)) return direct;
+
   const p = t.pnr ? String(t.pnr).trim() : '';
   if (/^\d{8,}$/.test(p)) return p;
 
@@ -304,7 +309,7 @@ const displayPnr = (t) => {
   }
 
   return booking || finalPnr || dbPnr || '-';
-};  
+};
 
 onMounted(() => fetchTickets(1));
 </script>
