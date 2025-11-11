@@ -180,7 +180,7 @@
             <div class="label">Nomor Pemesanan / PNR</div>
             <div class="value strong">
               {{ displayPnr(t) }}
-            </div>
+            </td>
           </div>
 
           <div class="row" v-if="safePassenger(t)">
@@ -375,41 +375,6 @@ const selectedTotal = computed(() => {
     return sum + num;
   }, 0);
 });
-
-/* PNR DISPLAY HELPERS */
-
-const extractRealPnr = (t) => {
-  if (t.real_pnr) {
-    return String(t.real_pnr).trim();
-  }
-  const extra = t.extra ? String(t.extra) : '';
-  const m = extra.match(/PNR=([A-Z0-9]{5,8})/i);
-  return m ? m[1].toUpperCase() : '';
-};
-
-const extractBookingNo = (t) => {
-  const p = t.pnr ? String(t.pnr).trim() : '';
-  if (/^\d{8,}$/.test(p)) return p;
-
-  const extra = t.extra ? String(t.extra) : '';
-  const m = extra.match(/NoPemesanan=(\d+)/i);
-  return m ? m[1] : (t.booking_no || '');
-};
-
-const displayPnr = (t) => {
-  const booking = extractBookingNo(t);
-  const real = extractRealPnr(t);
-
-  const dbPnr = t.pnr ? String(t.pnr).trim() : '';
-  const isDbPnrCode = dbPnr && !/^\d{8,}$/.test(dbPnr);
-  const finalPnr = real || (isDbPnrCode ? dbPnr : '');
-
-  if (booking && finalPnr && booking !== finalPnr) {
-    return `${booking} / ${finalPnr}`;
-  }
-
-  return booking || finalPnr || dbPnr || '-';
-};
 
 /* FETCH: MODE NORMAL (PAGINATED) */
 
@@ -637,13 +602,48 @@ const formatPrice = (price) => {
   });
 };
 
+const extractRealPnr = (t) => {
+  if (t.real_pnr) {
+    return String(t.real_pnr).trim();
+  }
+  const extra = t.extra ? String(t.extra) : '';
+  const m = extra.match(/PNR=([A-Z0-9]{5,8})/i);
+  return m ? m[1].toUpperCase() : '';
+};
+
+const extractBookingNo = (t) => {
+  // booking number kita simpan sebagai pnr (numerik) / atau di extra
+  const p = t.pnr ? String(t.pnr).trim() : '';
+  if (/^\d{8,}$/.test(p)) return p;
+
+  const extra = t.extra ? String(t.extra) : '';
+  const m = extra.match(/NoPemesanan=(\d+)/i);
+  return m ? m[1] : '';
+};
+
+const displayPnr = (t) => {
+  const booking = extractBookingNo(t);
+  const real = extractRealPnr(t);
+
+  // Kalau pnr di DB ternyata sudah kode booking (AIXQPT) dan bukan angka panjang
+  const dbPnr = t.pnr ? String(t.pnr).trim() : '';
+  const isDbPnrCode = dbPnr && !/^\d{8,}$/.test(dbPnr);
+
+  const finalPnr = real || (isDbPnrCode ? dbPnr : '');
+
+  if (booking && finalPnr && booking !== finalPnr) {
+    return `${booking} / ${finalPnr}`;
+  }
+
+  return booking || finalPnr || dbPnr || '-';
+}; 
+
 onMounted(() => {
   fetchPage(1);
 });
 </script>
 
 <style scoped>
-/* ... (CSS sama persis seperti sebelumnya, tidak diubah) ... */
 .page {
   height: 100vh;
   padding: 18px;
@@ -677,7 +677,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-/* (seluruh CSS lanjutan tetap sama persis seperti kode awal) */
+/* Header */
 .card-head {
   display: flex;
   justify-content: space-between;
@@ -707,6 +707,7 @@ onMounted(() => {
   font-size: 10px;
 }
 
+/* Actions */
 .actions {
   display: flex;
   align-items: center;
@@ -767,6 +768,7 @@ onMounted(() => {
   box-shadow: none;
 }
 
+/* Search bar */
 .search-bar {
   display: flex;
   align-items: center;
@@ -785,6 +787,7 @@ onMounted(() => {
   outline: none;
 }
 
+/* Table wrap */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -861,6 +864,7 @@ th {
   color: #111827;
 }
 
+/* Links & status */
 .link {
   color: #2563eb;
   font-size: 11px;
@@ -885,6 +889,7 @@ th {
   color: #9ca3af;
 }
 
+/* Mobile list */
 .mobile-list {
   display: none;
   flex: 1;
@@ -935,6 +940,7 @@ th {
   color: #6b7280;
 }
 
+/* Pagination */
 .pagination {
   margin-top: 6px;
   display: flex;
@@ -966,18 +972,21 @@ th {
   color: #6b7280;
 }
 
+/* Selected total */
 .selected-total {
   margin-top: 4px;
   font-size: 11px;
   color: #111827;
 }
 
+/* Error */
 .error {
   margin-top: 4px;
   font-size: 11px;
   color: #dc2626;
 }
 
+/* Modal */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1058,6 +1067,7 @@ th {
   color: #9ca3af;
 }
 
+/* Responsive */
 @media (max-width: 767px) {
   .page {
     padding: 10px;
