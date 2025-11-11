@@ -32,11 +32,18 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!loading && tickets.length === 0">
-              <td colspan="4" class="empty">Belum ada data tiket.</td>
-            </tr>
+            <td
+              v-if="!loading && pagedTickets.length === 0"
+              colspan="4"
+              class="empty"
+            >
+              Belum ada data tiket.
+            </td>
 
-            <tr v-for="t in tickets" :key="t.id || t.pnr">
+            <tr
+              v-for="t in pagedTickets"
+              :key="t.id || t.pnr"
+            >
               <!-- PNR / Booking No -->
               <td class="pnr">
                 {{ t.pnr || t.booking_no || '-' }}
@@ -95,14 +102,14 @@
       <!-- MOBILE LIST (scroll hanya di area ini) -->
       <div class="mobile-list">
         <div
-          v-if="!loading && tickets.length === 0"
+          v-if="!loading && pagedTickets.length === 0"
           class="empty"
         >
           Belum ada data tiket.
         </div>
 
         <div
-          v-for="t in tickets"
+          v-for="t in pagedTickets"
           :key="t.id || t.pnr"
           class="ticket-card"
         >
@@ -164,6 +171,30 @@
         </div>
       </div>
 
+      <!-- PAGINATION -->
+      <div
+        v-if="totalPages > 1"
+        class="pagination"
+      >
+        <button
+          class="nav-btn"
+          @click="prevPage"
+          :disabled="currentPage === 1"
+        >
+          ← Prev
+        </button>
+        <span class="page-info">
+          Page {{ currentPage }} / {{ totalPages }}
+        </span>
+        <button
+          class="nav-btn"
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+        >
+          Next →
+        </button>
+      </div>
+
       <p
         v-if="error"
         class="error"
@@ -175,7 +206,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 const API_URL =
   'https://tripcom-worker.alhamidbook.workers.dev/api/tickets';
@@ -184,9 +215,11 @@ const tickets = ref([]);
 const loading = ref(false);
 const error = ref('');
 
+const currentPage = ref(1);
+const pageSize = 10;
+
 /**
  * Parse tanggal & jam berangkat jadi objek Date.
- * Support format Trip.com: "17 November 2025" / "1 Januari 2026" + time.
  */
 const getDepartureDateTime = (t) => {
   const dateStr = t.date || t.departure_date || t.flight_date || '';
@@ -196,7 +229,6 @@ const getDepartureDateTime = (t) => {
 
   const trimmed = String(dateStr).trim();
 
-  // Coba format "DD NamaBulan YYYY" (ID / EN)
   const monthMap = {
     januari: 0,
     febuari: 1,
@@ -214,18 +246,23 @@ const getDepartureDateTime = (t) => {
     january: 0,
     february: 1,
     march: 2,
+    april: 3,
     may: 4,
     june: 5,
     july: 6,
     august: 7,
-    dec: 11,
+    september: 8,
+    october: 9,
+    november_en: 10,
     december: 11
   };
 
   const m = trimmed.match(/(\d{1,2})\s+([A-Za-zÀ-ÖØ-öø-ÿ]+)\s+(\d{4})/);
   if (m) {
     const day = parseInt(m[1], 10);
-    const monName = m[2].toLowerCase();
+    const monNameRaw = m[2].toLowerCase();
+    const monName =
+      monNameRaw === 'november' ? 'november' : monNameRaw;
     const year = parseInt(m[3], 10);
     const month =
       monthMap[monName] !== undefined
@@ -245,7 +282,6 @@ const getDepartureDateTime = (t) => {
     }
   }
 
-  // Fallback: biarkan JS yang parse
   const dt1 = new Date(`${trimmed} ${timeStr}`);
   if (!isNaN(dt1.getTime())) return dt1;
 
@@ -267,7 +303,6 @@ const fetchTickets = async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // sort: future (paling dekat) -> future berikutnya -> yang sudah lewat di bawah
     tickets.value = arr
       .map((t) => ({
         ...t,
@@ -278,20 +313,20 @@ const fetchTickets = async () => {
         const bd = b._dt;
 
         if (!ad && !bd) return 0;
-        if (!ad) return 1; // yang gak jelas tanggalnya taruh bawah
+        if (!ad) return 1;
         if (!bd) return -1;
 
         const aPast = ad < today;
         const bPast = bd < today;
 
-        // future dulu, lalu yang sudah lewat
         if (aPast !== bPast) {
           return aPast ? 1 : -1;
         }
 
-        // sama-sama future / sama-sama past → urutkan dari paling dekat
         return ad - bd;
       });
+
+    currentPage.value = 1;
   } catch (e) {
     error.value = e.message || 'Failed to fetch';
   } finally {
@@ -299,14 +334,35 @@ const fetchTickets = async () => {
   }
 };
 
-// Bersihkan field passenger dari teks status marketing
+/* Pagination computed */
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(tickets.value.length / pageSize))
+);
+
+const pagedTickets = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return tickets.value.slice(start, start + pageSize);
+});
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1;
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1;
+  }
+};
+
+/* Bersihkan field passenger dari teks status marketing */
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
   raw = String(raw);
 
-  // Pola "XXX (Nama depan) YYY (Nama belakang)" → ambil nama pertama saja
   const paxMatch = raw.match(
     /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
   );
@@ -316,14 +372,12 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  // Buang kalimat status/promo
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
     .replace(/^icon\b.*$/gim, '');
 
-  // Buang baris rute kalau nyampur
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
     ''
@@ -368,7 +422,6 @@ onMounted(fetchTickets);
 </script>
 
 <style scoped>
-/* Halaman penuh dengan gradient biru lembut */
 .page {
   height: 100vh;
   padding: 18px;
@@ -385,14 +438,14 @@ onMounted(fetchTickets);
   align-items: stretch;
 }
 
-/* Card utama, isi list yang scroll */
+/* Card utama */
 .card {
   width: 100%;
   max-width: 1320px;
   margin: 0 auto;
   background: #f5f7fb;
   border-radius: 18px;
-  padding: 18px 18px 12px;
+  padding: 18px 18px 10px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 10px 30px rgba(148, 163, 253, 0.18);
   color: #0f172a;
@@ -471,7 +524,7 @@ onMounted(fetchTickets);
   box-shadow: none;
 }
 
-/* DESKTOP TABLE: flex-1 + scroll internal */
+/* DESKTOP TABLE */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -481,7 +534,6 @@ onMounted(fetchTickets);
   background: #ffffff;
 }
 
-/* Table */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -617,6 +669,38 @@ th {
   color: #6b7280;
 }
 
+/* Pagination */
+.pagination {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.nav-btn {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.page-info {
+  font-size: 10px;
+  color: #6b7280;
+}
+
 /* Error */
 .error {
   margin-top: 4px;
@@ -640,6 +724,10 @@ th {
 
   .mobile-list {
     display: block;
+  }
+
+  .pagination {
+    justify-content: center;
   }
 }
 
