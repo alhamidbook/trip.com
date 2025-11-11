@@ -61,7 +61,7 @@
                 </span>
               </div>
 
-              <!-- Jika punya banyak leg, tampilkan semuanya -->
+              <!-- Multi-leg: hanya leg valid yang ditampilkan -->
               <div class="line-sub" v-if="legs(t).length">
                 <div v-for="(leg, idx) in legs(t)" :key="idx">
                   <span v-if="leg.time">{{ leg.time }}</span>
@@ -71,7 +71,7 @@
                 </div>
               </div>
 
-              <!-- Fallback lama (single) -->
+              <!-- Fallback single leg -->
               <div class="line-sub" v-else>
                 <span v-if="depTime(t)">{{ depTime(t) }}</span>
                 <span v-if="t.origin && t.destination">
@@ -142,7 +142,7 @@
               <span v-if="airline(t)"> • {{ airline(t) }}</span>
             </div>
 
-            <!-- Multi-leg di mobile -->
+            <!-- Multi-leg -->
             <div class="sub" v-if="legs(t).length">
               <div v-for="(leg, idx) in legs(t)" :key="idx">
                 <span v-if="leg.time">{{ leg.time }}</span>
@@ -221,27 +221,61 @@ const fetchTickets = async () => {
   }
 };
 
-/** --- Tambahan: pembaca Legs dari extra atau t.legs --- */
+/** Baca legs dari t.legs atau dari extra (Legs=[...])
+ *  DAN filter hanya yang benar-benar valid:
+ *  - punya origin, destination, time
+ *  - punya airline/flightNumber/kode (biar leg kedua yg setengah tidak ikut)
+ *  - buang yang mengandung teks "Harap berhati-hati" dsb.
+ */
 const legs = (t) => {
   if (!t) return [];
-  if (Array.isArray(t.legs)) return t.legs;
 
-  const extra = t.extra || t.Extra || '';
-  if (typeof extra !== 'string') return [];
-  const at = extra.indexOf('Legs=');
-  if (at === -1) return [];
-  try {
-    const json = extra.slice(at + 5).trim();
-    const arr = JSON.parse(json);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
+  let rawLegs = [];
+  if (Array.isArray(t.legs)) {
+    rawLegs = t.legs;
+  } else if (typeof t.extra === 'string' || typeof t.Extra === 'string') {
+    const extra = String(t.extra || t.Extra || '');
+    const idx = extra.indexOf('Legs=');
+    if (idx !== -1) {
+      const jsonPart = extra.slice(idx + 5).trim();
+      try {
+        const parsed = JSON.parse(jsonPart);
+        if (Array.isArray(parsed)) rawLegs = parsed;
+      } catch {
+        // biarkan kosong jika parse gagal
+      }
+    }
   }
+
+  if (!rawLegs.length) return [];
+
+  return rawLegs.filter((l) => {
+    if (!l) return false;
+
+    const origin = String(l.origin || '').trim();
+    const destination = String(l.destination || '').trim();
+    const time = String(l.time || '').trim();
+    const airline = String(l.airline || '').trim();
+    const flightNo = String(l.flightNumber || l.code || '').trim();
+
+    const text = `${origin} ${destination}`.toLowerCase();
+
+    const looksJunk =
+      text.includes('harap berhati') ||
+      text.includes('informasi') ||
+      text.includes('email ini');
+
+    const hasBasic = !!(origin && destination && time);
+    const hasCarrier = !!(airline || flightNo);
+
+    // hanya leg lengkap & bukan teks sampah
+    return hasBasic && hasCarrier && !looksJunk;
+  });
 };
 
 const mainLeg = (t) => {
   const l = legs(t);
-  return l && l.length ? l[0] : null;
+  return l.length ? l[0] : null;
 };
 
 // Bersihkan field passenger dari teks status marketing
@@ -251,7 +285,6 @@ const safePassenger = (t) => {
 
   raw = String(raw);
 
-  // Pola "XXX (Nama depan) YYY (Nama belakang)" → ambil nama pertama saja
   const paxMatch = raw.match(
     /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
   );
@@ -261,14 +294,12 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  // Buang kalimat status/promo
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
     .replace(/^icon\b.*$/gim, '');
 
-  // Buang baris rute kalau nyampur
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
     ''
@@ -297,7 +328,10 @@ const depTime = (t) => {
 
 const airline = (t) => {
   const ml = mainLeg(t);
-  return (ml && ml.airline) || t.operator || t.airline || '';
+  return (ml && ml.airline)
+    || t.operator
+    || t.airline
+    || '';
 };
 
 const formatPrice = (price) => {
@@ -494,7 +528,7 @@ th {
   color: #9ca3af;
 }
 
-/* MOBILE LIST: hanya dipakai di mobile, juga scroll internal */
+/* MOBILE LIST */
 .mobile-list {
   display: none;
   flex: 1;
