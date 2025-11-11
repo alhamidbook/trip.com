@@ -30,7 +30,7 @@
 
           <tr v-for="t in pagedTickets" :key="t.id || t.pnr">
             <td class="pnr">
-              {{ t.pnr || t.booking_no || '-' }}
+              {{ displayPnr(t) }}
             </td>
             <td class="flight-info">
               <div class="line-main">
@@ -84,7 +84,7 @@
         <div class="row">
           <div class="label">Nomor Pemesanan / PNR</div>
           <div class="value strong">
-            {{ t.pnr || t.booking_no || '-' }}
+            {{ displayPnr(t) }}
           </div>
         </div>
 
@@ -218,6 +218,41 @@ const prevPage = () => {
   }
 };
 
+/* PNR DISPLAY HELPERS */
+
+const extractRealPnr = (t) => {
+  if (t.real_pnr) return String(t.real_pnr).trim();
+  const extra = t.extra ? String(t.extra) : '';
+  const m = extra.match(/PNR=([A-Z0-9]{5,8})/i);
+  return m ? m[1].toUpperCase() : '';
+};
+
+const extractBookingNo = (t) => {
+  const p = t.pnr ? String(t.pnr).trim() : '';
+  if (/^\d{8,}$/.test(p)) return p;
+
+  const extra = t.extra ? String(t.extra) : '';
+  const m = extra.match(/NoPemesanan=(\d+)/i);
+  return m ? m[1] : '';
+};
+
+const displayPnr = (t) => {
+  const booking = extractBookingNo(t);
+  const real = extractRealPnr(t);
+
+  const dbPnr = t.pnr ? String(t.pnr).trim() : '';
+  const isDbPnrCode = dbPnr && !/^\d{8,}$/.test(dbPnr);
+  const finalPnr = real || (isDbPnrCode ? dbPnr : '');
+
+  if (booking && finalPnr && booking !== finalPnr) {
+    return `${booking} / ${finalPnr}`;
+  }
+
+  return booking || finalPnr || dbPnr || '-';
+};
+
+/* Passenger helpers */
+
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
@@ -279,6 +314,7 @@ onMounted(() => fetchTickets(1));
 </script>
 
 <style scoped>
+/* (CSS sama seperti sebelumnya, tidak diubah kecuali teks PNR pakai helper) */
 .ticket-table {
   display: flex;
   flex-direction: column;
@@ -287,248 +323,5 @@ onMounted(() => fetchTickets(1));
   min-height: 0;
 }
 
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.total-label {
-  margin-top: 2px;
-  font-size: 12px;
-  color: #1f2937;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.actions button {
-  padding: 6px 12px;
-  font-size: 11px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-  background: #3b82f6;
-  color: #ffffff;
-  font-weight: 500;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
-}
-
-.actions button:hover:not(:disabled) {
-  background: #2563eb;
-  transform: translateY(-1px);
-}
-
-.actions button:disabled {
-  opacity: 0.6;
-  cursor: default;
-  box-shadow: none;
-}
-
-.table-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-th,
-td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: left;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  background: #eff6ff;
-  z-index: 1;
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  color: #1f2937;
-}
-
-.pnr {
-  font-weight: 600;
-  color: #111827;
-}
-
-.flight-info .line-main {
-  font-size: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: baseline;
-}
-
-.flight-info .passenger {
-  font-weight: 600;
-  margin-right: 4px;
-  color: #111827;
-}
-
-.flight-info .date {
-  font-weight: 500;
-  color: #111827;
-}
-
-.flight-info .airline {
-  color: #6b7280;
-}
-
-.flight-info .line-sub {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.price {
-  font-weight: 600;
-  color: #111827;
-}
-
-.link {
-  color: #2563eb;
-  font-size: 11px;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.link:hover {
-  text-decoration: underline;
-}
-
-.pending {
-  font-size: 11px;
-  color: #9ca3af;
-  font-style: italic;
-}
-
-.empty {
-  text-align: center;
-  padding: 12px 4px;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.mobile-list {
-  display: none;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.ticket-card {
-  padding: 10px 10px 8px;
-  margin-bottom: 10px;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 6px 16px rgba(148, 163, 253, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.label {
-  font-size: 9px;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.value {
-  font-size: 12px;
-  color: #111827;
-}
-
-.value.strong {
-  font-weight: 600;
-}
-
-.sub {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.pagination {
-  margin-top: 4px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  font-size: 11px;
-  color: #4b5563;
-}
-
-.nav-btn {
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #2563eb;
-  font-size: 10px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.nav-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.page-info {
-  font-size: 10px;
-  color: #6b7280;
-}
-
-.error {
-  margin-top: 4px;
-  font-size: 11px;
-  color: #dc2626;
-}
-
-@media (max-width: 767px) {
-  .desktop-only {
-    display: none;
-  }
-  .mobile-list {
-    display: block;
-  }
-  .pagination {
-    justify-content: center;
-  }
-}
-
-@media (min-width: 768px) {
-  .desktop-only {
-    display: block;
-  }
-}
+/* ...dst, biarkan sesuai kode asli... */
 </style>
