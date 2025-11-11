@@ -44,13 +44,19 @@
             <!-- Penumpang + Info Penerbangan -->
             <td class="flight-info">
               <div class="line-main">
-                <span v-if="safePassenger(t)" class="passenger">
+                <span
+                  v-if="safePassenger(t)"
+                  class="passenger"
+                >
                   {{ safePassenger(t) }}
                 </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
-                <span v-if="airline(t)" class="airline">
+                <span
+                  class="airline"
+                  v-if="airline(t)"
+                >
                   • {{ airline(t) }}
                 </span>
               </div>
@@ -87,7 +93,10 @@
 
     <!-- MOBILE LIST -->
     <div class="mobile-list">
-      <div v-if="!loading && tickets.length === 0" class="empty">
+      <div
+        v-if="!loading && tickets.length === 0"
+        class="empty"
+      >
         Belum ada data tiket.
       </div>
 
@@ -103,7 +112,10 @@
           </div>
         </div>
 
-        <div class="row" v-if="safePassenger(t)">
+        <div
+          class="row"
+          v-if="safePassenger(t)"
+        >
           <div class="label">Penumpang</div>
           <div class="value">
             {{ safePassenger(t) }}
@@ -151,7 +163,10 @@
       </div>
     </div>
 
-    <p v-if="error" class="error">
+    <p
+      v-if="error"
+      class="error"
+    >
       {{ error }}
     </p>
   </div>
@@ -182,14 +197,14 @@ const fetchTickets = async () => {
   }
 };
 
-// Passenger: pastikan bersih dari teks aneh
+// Passenger cleaning: buang teks status seperti
+// "Kami akan segera menerbitkan tiket Anda", "Tiket akan diterbitkan...", dsb.
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
   raw = String(raw);
 
-  // Pola "(Nama depan)/(Nama belakang)"
   const paxMatch = raw.match(
     /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
   );
@@ -199,14 +214,12 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  // Buang frasa marketing kalau nyelip
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
     .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
     .replace(/^icon\b.*$/gim, '');
 
-  // Hapus baris rute yang nyasar
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
     ''
@@ -252,12 +265,13 @@ onMounted(fetchTickets);
 
 <style scoped>
 .card {
-  background: #020817;
+  background: #ffffff;
   border-radius: 16px;
-  padding: 10px;
-  border: 1px solid rgba(75, 85, 99, 0.7);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.8);
-  color: #e5e7eb;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  color: #111827;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .card-head {
@@ -265,47 +279,72 @@ onMounted(fetchTickets);
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
+  color: #0f172a;
 }
 
 .subtitle {
-  font-size: 10px;
-  color: #9ca3af;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.subtitle strong {
+  color: #2563eb;
+  font-weight: 600;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
+  gap: 8px;
+  font-size: 11px;
 }
 
 .count {
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid #4b5563;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
 }
 
 .actions button {
-  padding: 4px 10px;
-  font-size: 10px;
+  padding: 5px 12px;
+  font-size: 11px;
   border-radius: 999px;
   border: none;
   cursor: pointer;
-  background: #22c55e;
-  color: #020817;
+  background: #2563eb;
+  color: #ffffff;
+  transition: background 0.15s ease, transform 0.05s ease,
+    box-shadow 0.1s ease;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
+.actions button:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* TABLE */
 .table-wrap {
   max-height: 70vh;
   overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
 }
 
 table {
@@ -316,24 +355,26 @@ table {
 
 th,
 td {
-  padding: 6px 6px;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.7);
+  padding: 7px 8px;
+  border-bottom: 1px solid #e5e7eb;
   text-align: left;
 }
 
 th {
   position: sticky;
   top: 0;
-  background: #020817;
+  background: #eff6ff;
   z-index: 1;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 9px;
   letter-spacing: 0.06em;
+  color: #1f2937;
 }
 
 .pnr {
   font-weight: 600;
+  color: #111827;
 }
 
 .flight-info .line-main {
@@ -347,28 +388,33 @@ th {
 .flight-info .passenger {
   font-weight: 600;
   margin-right: 4px;
+  color: #111827;
 }
 
 .flight-info .date {
   font-weight: 500;
+  color: #111827;
 }
 
 .flight-info .airline {
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .flight-info .line-sub {
   font-size: 9px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .price {
   font-weight: 600;
+  color: #111827;
 }
 
 .link {
+  color: #2563eb;
   font-size: 9px;
   text-decoration: none;
+  font-weight: 500;
 }
 
 .link:hover {
@@ -385,7 +431,7 @@ th {
   text-align: center;
   padding: 10px 4px;
   font-size: 10px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 /* MOBILE */
@@ -397,8 +443,9 @@ th {
   padding: 9px 9px 8px;
   margin-bottom: 8px;
   border-radius: 12px;
-  background: rgba(9, 9, 11, 0.96);
-  border: 1px solid rgba(75, 85, 99, 0.9);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -412,13 +459,14 @@ th {
 
 .label {
   font-size: 8px;
-  color: #6b7280;
+  color: #9ca3af;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .value {
   font-size: 10px;
+  color: #111827;
 }
 
 .value.strong {
@@ -427,13 +475,13 @@ th {
 
 .sub {
   font-size: 9px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .error {
   margin-top: 6px;
   font-size: 10px;
-  color: #f97316;
+  color: #dc2626;
 }
 
 /* Responsive */
