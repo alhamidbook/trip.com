@@ -44,19 +44,13 @@
             <!-- Penumpang + Info Penerbangan -->
             <td class="flight-info">
               <div class="line-main">
-                <span
-                  v-if="safePassenger(t)"
-                  class="passenger"
-                >
+                <span v-if="safePassenger(t)" class="passenger">
                   {{ safePassenger(t) }}
                 </span>
                 <span class="date">
                   {{ depDate(t) || '-' }}
                 </span>
-                <span
-                  class="airline"
-                  v-if="airline(t)"
-                >
+                <span v-if="airline(t)" class="airline">
                   • {{ airline(t) }}
                 </span>
               </div>
@@ -93,10 +87,7 @@
 
     <!-- MOBILE LIST -->
     <div class="mobile-list">
-      <div
-        v-if="!loading && tickets.length === 0"
-        class="empty"
-      >
+      <div v-if="!loading && tickets.length === 0" class="empty">
         Belum ada data tiket.
       </div>
 
@@ -112,10 +103,7 @@
           </div>
         </div>
 
-        <div
-          class="row"
-          v-if="safePassenger(t)"
-        >
+        <div class="row" v-if="safePassenger(t)">
           <div class="label">Penumpang</div>
           <div class="value">
             {{ safePassenger(t) }}
@@ -163,10 +151,7 @@
       </div>
     </div>
 
-    <p
-      v-if="error"
-      class="error"
-    >
+    <p v-if="error" class="error">
       {{ error }}
     </p>
   </div>
@@ -197,15 +182,14 @@ const fetchTickets = async () => {
   }
 };
 
-// Bersihkan field passenger supaya tidak tampil "Kami akan..." dsb
+// Passenger: pastikan bersih dari teks aneh
 const safePassenger = (t) => {
   let raw = t.passenger || '';
   if (!raw) return '';
 
   raw = String(raw);
 
-  // Jika masih mengandung pola (Nama depan)/(Nama belakang),
-  // ekstrak nama pertama saja.
+  // Pola "(Nama depan)/(Nama belakang)"
   const paxMatch = raw.match(
     /([A-ZÀ-ÖØ-Ý' \.]+)\(Nama depan\)\s*([A-ZÀ-ÖØ-Ý' \.]+)\(Nama belakang\)/i
   );
@@ -215,13 +199,14 @@ const safePassenger = (t) => {
     return `${first} ${last}`.trim();
   }
 
-  // Hapus frasa marketing & info status
+  // Buang frasa marketing kalau nyelip
   raw = raw
     .replace(/Kami akan segera menerbitkan tiket Anda.*$/gim, '')
+    .replace(/Kami tengah memantau status penerbitan tiket dengan saksama.*$/gim, '')
     .replace(/Tiket akan diterbitkan dalam waktu.*$/gim, '')
     .replace(/^icon\b.*$/gim, '');
 
-  // Hapus baris rute yang nyelip di passenger
+  // Hapus baris rute yang nyasar
   raw = raw.replace(
     /^[A-Za-zÀ-ÖØ-öø-ÿ\s]+-\s*[A-Za-zÀ-ÖØ-öø-ÿ\s]+.*$/gim,
     ''
@@ -382,7 +367,6 @@ th {
 }
 
 .link {
-  color: #38bdf8;
   font-size: 9px;
   text-decoration: none;
 }
