@@ -180,7 +180,7 @@
           </div>
 
           <div class="row">
-            <div class="label">Nomor Pemesanan / PNR</div>
+            <div class="label">Nomor Pemesanan</div>
             <div class="value strong">
               {{ t.pnr || t.booking_no || '-' }}
             </div>
