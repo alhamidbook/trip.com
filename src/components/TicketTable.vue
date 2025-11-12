@@ -17,7 +17,7 @@
       <table>
         <thead>
           <tr>
-            <th>Nomor Pemesanan / PNR</th>
+            <th>Nomor Pemesanan</th>
             <th>Penumpang &amp; Rute</th>
             <th>Download PDF Ticket</th>
             <th>Total Harga</th>
@@ -84,7 +84,7 @@
         class="ticket-card"
       >
         <div class="row">
-          <div class="label">Nomor Pemesanan / PNR</div>
+          <div class="label">Nomor Pemesanan</div>
           <div class="value strong">
             {{ t.pnr || t.booking_no || '-' }}
           </div>
